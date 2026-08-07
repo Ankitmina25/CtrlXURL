@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { FiLink, FiMousePointer, FiCopy, FiBarChart2, FiShare2, FiTrash2, FiMaximize } from 'react-icons/fi';
+import { buildShortUrl } from '../api';
 
 const UrlCard = ({ url, onDelete, onAnalytics, onQrCode }) => {
   const [isFlipped, setIsFlipped] = useState(false);
-  const shortUrl = `http://localhost:3000/api/url/${url.shortCode}`;
+  const shortUrl = buildShortUrl(url.shortCode);
 
   const copyToClipboard = (e, text) => {
     e.stopPropagation();

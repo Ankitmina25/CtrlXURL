@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import InfoModal from '../components/InfoModal';
+import { buildShortUrl } from '../api';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { FiLink, FiMousePointer, FiPlusCircle, FiGlobe, FiZap, FiTag, FiBarChart2, FiMaximize, FiClock, FiShield, FiArrowRight, FiGithub, FiTwitter, FiLinkedin, FiCopy } from 'react-icons/fi';
@@ -54,7 +55,7 @@ const Landing = () => {
       const code = Math.random().toString(36).substring(2, 7);
       setDemoResult({
         originalUrl: demoUrl,
-        shortUrl: `http://localhost:3000/api/url/${code}`,
+        shortUrl: buildShortUrl(code),
         shortCode: code,
       });
       setDemoLoading(false);

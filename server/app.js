@@ -4,7 +4,21 @@ const cors = require('cors');
 const authRoutes = require("./routes/auth.routes");
 const cookieParser = require('cookie-parser');
 const urlRoutes = require("./routes/url.routes");
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+	.split(',')
+	.map((origin) => origin.trim())
+	.filter(Boolean);
+
+app.use(cors({
+	origin: (origin, callback) => {
+		if (!origin || allowedOrigins.includes(origin)) {
+			return callback(null, true);
+		}
+
+		return callback(new Error('Not allowed by CORS'));
+	},
+	credentials: true,
+}));
 app.use(cookieParser());
 app.use(express.json());
 app.use("/api/auth", authRoutes);

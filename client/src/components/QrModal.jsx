@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { FiX, FiWifi, FiSmartphone, FiMaximize } from 'react-icons/fi';
+import { buildShortUrl } from '../api';
 
 const QrModal = ({ url, onClose }) => {
   const [isFlipped, setIsFlipped] = useState(false);
@@ -8,7 +9,7 @@ const QrModal = ({ url, onClose }) => {
 
   // If the URL object already has a pre-generated qrCode (from create form), use it.
   // Otherwise, fallback to generating one on the fly using a public API.
-  const shortUrl = `http://localhost:3000/api/url/${url.shortCode}`;
+  const shortUrl = buildShortUrl(url.shortCode);
   const [qrCodeSrc, setQrCodeSrc] = useState(url.qrCode || '');
 
   let brandName = '';

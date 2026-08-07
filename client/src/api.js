@@ -1,4 +1,7 @@
-const API = 'http://localhost:3000/api';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const BACKEND_ORIGIN = API.replace(/\/api\/?$/, '');
+
+export const buildShortUrl = (shortCode) => `${BACKEND_ORIGIN}/api/url/${shortCode}`;
 
 const request = async (endpoint, options = {}) => {
   const res = await fetch(`${API}${endpoint}`, {

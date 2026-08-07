@@ -108,20 +108,7 @@ const userLogin = async (req, res) => {
         const { accessToken, refreshToken } = generateTokens(user);
         user.refreshToken = refreshToken;
         await user.save();
-
-        res.cookie("accessToken", accessToken, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "lax",
-            maxAge: 15 * 60 * 1000
-        });
-
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000
-        });
+        setCookies(res, accessToken, refreshToken);
 
         return res.status(200).json({
             message: "Login successful"

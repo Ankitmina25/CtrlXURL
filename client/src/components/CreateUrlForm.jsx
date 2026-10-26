@@ -81,7 +81,7 @@ const CreateUrlForm = ({ onCreated }) => {
             <input
               className="shortener-input"
               type="url"
-              placeholder="Paste long url to shorten it"
+              placeholder="Enter or paste your long URL (e.g. https://yourbrand.com/campaign)..."
               value={originalUrl}
               onChange={(e) => setOriginalUrl(e.target.value)}
               required
@@ -93,7 +93,7 @@ const CreateUrlForm = ({ onCreated }) => {
             <input
               className="shortener-input"
               type="text"
-              placeholder="Custom Code (3-10 chars)"
+              placeholder="Custom alias (e.g. launch2026)"
               value={customCode}
               onChange={(e) => setCustomCode(e.target.value)}
             />
@@ -176,7 +176,7 @@ const CreateUrlForm = ({ onCreated }) => {
                   <div style={{ color: 'var(--brand-coral)', fontWeight: 800, fontSize: '1.2rem', marginBottom: '4px' }}>CtrlXURL</div>
                   <div style={{ color: '#ffd700', fontSize: '0.9rem', marginBottom: '6px' }}>★★★★★</div>
                   <h3 style={{ fontSize: '1rem', marginBottom: '2px' }}>Scan to Open Link</h3>
-                  <p style={{ fontSize: '0.75rem', marginBottom: '16px' }}>Share yer link instantly</p>
+                  <p style={{ fontSize: '0.75rem', marginBottom: '16px' }}>Share your link instantly</p>
 
                   <div className="qr-code-wrapper">
                     <img src={result.qrCode} alt="QR Code" />

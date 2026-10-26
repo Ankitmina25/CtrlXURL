@@ -1,15 +1,24 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { FiX, FiCheckCircle, FiZap, FiMaximize, FiClock, FiBarChart2, FiShield, FiMail, FiUser, FiSend, FiMessageSquare } from 'react-icons/fi';
+import { contactAPI } from '../api';
 
 const InfoModal = ({ type, onClose }) => {
   const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
 
-  const handleContactSubmit = (e) => {
+  const handleContactSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
-    toast.success('Message sent successfully! We will get back to you shortly.');
+    try {
+      await contactAPI.send({
+        ...contactForm,
+        subject: 'CtrlXURL Contact Message',
+      });
+      setSubmitted(true);
+      toast.success('Message sent successfully!');
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
 
   const renderContent = () => {
@@ -62,7 +71,7 @@ const InfoModal = ({ type, onClose }) => {
                 <h4 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', fontWeight: 700, color: 'var(--text-dark)', marginBottom: '4px' }}>
                   2. How We Use Information
                 </h4>
-                <p>Yer data is strictly used to provide URL shortening, authentication via secure OTP ciphers, analytics reports, and link expiration enforcement. We never sell or share yer personal information.</p>
+                <p>Your data is strictly used to provide URL shortening, authentication via secure OTP verification, analytics reports, and link expiration enforcement. We never sell or share your personal information.</p>
               </div>
 
               <div>
@@ -102,8 +111,8 @@ const InfoModal = ({ type, onClose }) => {
 
               <div style={{ background: 'var(--bg-input)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
                 <FiBarChart2 style={{ fontSize: '1.5rem', color: 'var(--brand-coral)' }} />
-                <h4 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', fontWeight: 700, margin: '8px 0 4px', color: 'var(--text-dark)' }}>Real-Time Analytics</h4>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Track total clicks and active/expired status directly from yer dashboard.</p>
+                <h4 style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', fontWeight: 700, margin: '8px 0 4px', color: 'var(--text-dark)' }}>Click Stream Analytics</h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Track live click streams, device types, operating systems, browsers, and IP activity.</p>
               </div>
             </div>
           </>
@@ -123,7 +132,7 @@ const InfoModal = ({ type, onClose }) => {
               <div style={{ textAlign: 'center', padding: '32px 16px', background: 'var(--bg-input)', borderRadius: '12px' }}>
                 <FiCheckCircle style={{ fontSize: '2.5rem', color: 'var(--brand-coral)' }} />
                 <h4 style={{ fontFamily: 'var(--font-heading)', margin: '12px 0 6px' }}>Thank You!</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>We've received yer message and will respond within 24 hours.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>We've received your message and will respond within 24 hours.</p>
               </div>
             ) : (
               <form onSubmit={handleContactSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -132,7 +141,7 @@ const InfoModal = ({ type, onClose }) => {
                   <input
                     className="form-input-clean"
                     type="text"
-                    placeholder="Your Name"
+                    placeholder="Enter your full name"
                     value={contactForm.name}
                     onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
                     required
@@ -144,7 +153,7 @@ const InfoModal = ({ type, onClose }) => {
                   <input
                     className="form-input-clean"
                     type="email"
-                    placeholder="name@example.com"
+                    placeholder="name@company.com"
                     value={contactForm.email}
                     onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
                     required
@@ -156,7 +165,7 @@ const InfoModal = ({ type, onClose }) => {
                   <textarea
                     className="form-input-clean"
                     rows={3}
-                    placeholder="How can we help you?"
+                    placeholder="Please describe how our team can help you..."
                     value={contactForm.message}
                     onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
                     required

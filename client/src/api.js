@@ -29,3 +29,7 @@ export const urlAPI = {
   delete: (id) => request(`/url/${id}`, { method: 'DELETE' }),
   analytics: (id) => request(`/url/${id}/analytics`),
 };
+
+export const contactAPI = {
+  send: (body) => request('/contact', { method: 'POST', body: JSON.stringify(body) }),
+};

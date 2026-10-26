@@ -80,7 +80,7 @@ const QrModal = ({ url, onClose }) => {
               <div style={{ color: 'var(--brand-coral)', fontWeight: 800, fontSize: '1.2rem', margin: '12px 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brandName}</div>
               <div style={{ color: '#ffd700', fontSize: '0.9rem', marginBottom: '6px' }}>★★★★★</div>
               <h3 style={{ fontSize: '1rem', marginBottom: '2px' }}>Scan to Open Link</h3>
-              <p style={{ fontSize: '0.75rem', marginBottom: '16px' }}>Share yer link instantly</p>
+              <p style={{ fontSize: '0.75rem', marginBottom: '16px' }}>Share your link instantly</p>
               
               <div className="qr-code-wrapper">
                 <img src={qrCodeSrc} alt="QR Code" />

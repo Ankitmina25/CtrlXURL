@@ -5,7 +5,7 @@ import InfoModal from '../components/InfoModal';
 import { buildShortUrl } from '../api';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { FiLink, FiMousePointer, FiPlusCircle, FiGlobe, FiZap, FiTag, FiBarChart2, FiMaximize, FiClock, FiShield, FiArrowRight, FiGithub, FiTwitter, FiLinkedin, FiCopy } from 'react-icons/fi';
+import { FiLink, FiMousePointer, FiGlobe, FiZap, FiTag, FiBarChart2, FiMaximize, FiClock, FiShield, FiArrowRight, FiGithub, FiTwitter, FiLinkedin, FiCopy } from 'react-icons/fi';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -21,22 +21,31 @@ const Landing = () => {
   const displayUser = user ? user.username : 'User';
 
   useEffect(() => {
-    cardsRef.current.forEach((card) => {
+    // Animate Hero immediately on mount
+    if (cardsRef.current[0]) {
+      gsap.fromTo(
+        cardsRef.current[0],
+        { opacity: 0, y: 30, scale: 0.98 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.7, ease: 'power3.out' }
+      );
+    }
+
+    // Subsequent reveal cards with scrollTrigger (once: true so content never vanishes)
+    cardsRef.current.slice(1).forEach((card) => {
       if (!card) return;
       gsap.fromTo(
         card,
-        { opacity: 0, y: 60, scale: 0.95, rotateX: 4 },
+        { opacity: 0, y: 50, scale: 0.98 },
         {
           opacity: 1,
           y: 0,
           scale: 1,
-          rotateX: 0,
-          duration: 0.8,
-          ease: 'power3.out',
+          duration: 0.7,
+          ease: 'power2.out',
           scrollTrigger: {
             trigger: card,
-            start: 'top 85%',
-            toggleActions: 'play none none reverse',
+            start: 'top 88%',
+            once: true,
           },
         }
       );
@@ -87,7 +96,7 @@ const Landing = () => {
                 <input
                   className="shortener-input"
                   type="url"
-                  placeholder="Paste long url to shorten it"
+                  placeholder="Enter or paste your long URL (e.g. https://yourbrand.com/campaign)..."
                   value={demoUrl}
                   onChange={(e) => setDemoUrl(e.target.value)}
                   required
@@ -190,7 +199,7 @@ const Landing = () => {
             <div className="split-content">
               <h2>The all-in-one tool to shorten your URLs</h2>
               <p>
-                Manage yer entire link catalog from a single intuitive dashboard. Generate QR codes, set expiration dates, and monitor every single visit.
+                Manage your entire link catalog from a single intuitive dashboard. Generate QR codes, set expiration dates, and monitor every single visit.
               </p>
 
               <div className="feature-bullets">
@@ -253,13 +262,13 @@ const Landing = () => {
             <div className="grid-feature-card">
               <FiTag className="grid-feature-icon" style={{ color: 'var(--brand-coral)' }} />
               <h4>Custom Code Support</h4>
-              <p>Define yer own vanity short codes from 3 to 10 characters.</p>
+              <p>Define your own vanity short codes from 3 to 10 characters.</p>
             </div>
 
             <div className="grid-feature-card">
               <FiBarChart2 className="grid-feature-icon" style={{ color: 'var(--brand-coral)' }} />
-              <h4>Click Analytics</h4>
-              <p>Monitor total click volume and active/expired status.</p>
+              <h4>Deep Click Analytics</h4>
+              <p>Track live visits with device, OS, browser, and IP activity stream breakdowns.</p>
             </div>
 
             <div className="grid-feature-card">
@@ -307,9 +316,15 @@ const Landing = () => {
           <Link to="/contact">Contact US</Link>
         </div>
         <div className="footer-socials">
-          <FiGithub />
-          <FiTwitter />
-          <FiLinkedin />
+          <a href="https://github.com/Ankitmina25" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+            <FiGithub />
+          </a>
+          <a href="https://x.com/AnkitMeena2512" target="_blank" rel="noopener noreferrer" aria-label="X">
+            <FiTwitter />
+          </a>
+          <a href="https://www.linkedin.com/in/ankit-meena77/?isSelfProfile=true" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+            <FiLinkedin />
+          </a>
           <FiGlobe />
         </div>
       </footer>

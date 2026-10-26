@@ -10,37 +10,51 @@ const userRegister = async (req, res) => {
     if (!username || !email || !password) {
         return res.status(400).json({
             message: "All fields are required"
-        })
+        });
     }
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
-        return res.status(400).json({
-            message: "User is already exists"
-        })
+        if (existingUser.isVerified) {
+            return res.status(400).json({
+                message: "User is already exists"
+            });
+        }
+        await userModel.findByIdAndDelete(existingUser._id);
     }
     const hashPass = await bcrypt.hash(password, 10);
     const otp = Math.floor(100000 + Math.random() * 900000);
+    let user;
     try {
-        const user = await userModel.create({
+        user = await userModel.create({
             username,
             email,
             password: hashPass,
             otp,
             otpExpiry: Date.now() + 3 * 60 * 1000
+        });
 
-        })
-        await sendEmail(email, otp);
+        try {
+            await sendEmail(email, otp);
+        } catch (emailErr) {
+            console.error("\n❌ Email delivery failed via SMTP:", emailErr.message);
+            console.log(`======================================================`);
+            console.log(`🔑 [DEV OTP CODE] For ${email}: ${otp}`);
+            console.log(`👉 Enter this code on the OTP page to verify your account!`);
+            console.log(`======================================================\n`);
+        }
+
         return res.status(201).json({
             message: "OTP sent successfully"
-        })
-
+        });
     } catch (err) {
+        if (user && user._id) {
+            await userModel.findByIdAndDelete(user._id);
+        }
         return res.status(500).json({
             message: err.message
-
-        })
+        });
     }
-}
+};
 
 const otpVerify = async (req, res) => {
     try {

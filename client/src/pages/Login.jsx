@@ -47,7 +47,7 @@ const Login = () => {
       <div className="auth-card-clean" ref={cardRef}>
         <div className="auth-header">
           <h2>Welcome Back</h2>
-          <p>Log in to yer CtrlXURL account to manage links</p>
+          <p>Log in to your CtrlXURL account to manage links</p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -56,7 +56,7 @@ const Login = () => {
             <input
               className="form-input-clean"
               type="email"
-              placeholder="name@example.com"
+              placeholder="name@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -68,7 +68,7 @@ const Login = () => {
             <input
               className="form-input-clean"
               type="password"
-              placeholder="••••••••"
+              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required

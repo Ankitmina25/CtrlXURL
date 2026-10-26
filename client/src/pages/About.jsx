@@ -13,22 +13,29 @@ const About = () => {
   const cardsRef = useRef([]);
 
   useEffect(() => {
-    cardsRef.current.forEach((card) => {
+    if (cardsRef.current[0]) {
+      gsap.fromTo(
+        cardsRef.current[0],
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }
+      );
+    }
+
+    cardsRef.current.slice(1).forEach((card) => {
       if (!card) return;
       gsap.fromTo(
         card,
-        { opacity: 0, y: 60, scale: 0.95, rotateX: 4 },
+        { opacity: 0, y: 50, scale: 0.98 },
         {
           opacity: 1,
           y: 0,
           scale: 1,
-          rotateX: 0,
-          duration: 0.8,
-          ease: 'power3.out',
+          duration: 0.7,
+          ease: 'power2.out',
           scrollTrigger: {
             trigger: card,
-            start: 'top 85%',
-            toggleActions: 'play none none reverse',
+            start: 'top 88%',
+            once: true,
           },
         }
       );
@@ -83,10 +90,10 @@ const About = () => {
             <div className="split-content">
               <h2>Built for Speed, Privacy & Trust 🛡️</h2>
               <p>
-                We believe yer links belong to you. CtrlXURL provides end-to-end link management with zero compromise on user privacy or data security.
+                We believe your links belong to you. CtrlXURL provides end-to-end link management with zero compromise on user privacy or data security.
               </p>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '1.05rem' }}>
-                <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><FiLock style={{ color: '#ffffff' }} /> <strong>Secure OTP Auth</strong> for crew accounts</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><FiLock style={{ color: '#ffffff' }} /> <strong>Secure OTP Auth</strong> for user accounts</li>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><FiZap style={{ color: '#ffffff' }} /> <strong>Distributed Edge Redirection</strong> worldwide</li>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><FiShield style={{ color: '#ffffff' }} /> <strong>Zero Third-Party Data Selling</strong> guaranteed</li>
               </ul>
@@ -96,7 +103,7 @@ const About = () => {
               <FiShield style={{ fontSize: '3.5rem', color: 'var(--brand-coral)' }} />
               <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.4rem', margin: '16px 0 8px' }}>Security Pledge</h3>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', lineHeight: '1.6' }}>
-                Every route you plot on CtrlXURL is protected by our global infrastructure and strict privacy policies.
+                Every link you create on CtrlXURL is protected by our global infrastructure and strict privacy policies.
               </p>
             </div>
           </div>
@@ -107,9 +114,9 @@ const About = () => {
           className="reveal-card reveal-card-cta"
           ref={(el) => (cardsRef.current[2] = el)}
         >
-          <h2>Ready to shorten yer URLs?</h2>
+          <h2>Ready to shorten your URLs?</h2>
           <p style={{ fontSize: '1.1rem', opacity: 0.8, maxWidth: '560px', margin: '12px auto 28px' }}>
-            Start shortening yer URLs for free today and track every click.
+            Start shortening your URLs for free today and track every click.
           </p>
           <Link to={ctaTarget} className="btn btn-coral btn-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
             {user ? 'Go to Dashboard' : 'Create Free Account'} <FiArrowRight />
@@ -125,9 +132,15 @@ const About = () => {
           <Link to="/contact">Contact US</Link>
         </div>
         <div className="footer-socials">
-          <FiGithub />
-          <FiTwitter />
-          <FiLinkedin />
+          <a href="https://github.com/Ankitmina25" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+            <FiGithub />
+          </a>
+          <a href="https://x.com/AnkitMeena2512" target="_blank" rel="noopener noreferrer" aria-label="X">
+            <FiTwitter />
+          </a>
+          <a href="https://www.linkedin.com/in/ankit-meena77/?isSelfProfile=true" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+            <FiLinkedin />
+          </a>
           <FiGlobe />
         </div>
       </footer>

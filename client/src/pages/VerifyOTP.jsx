@@ -9,7 +9,7 @@ const VerifyOTP = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { checkAuth } = useAuth();
-  const email = location.state?.email || '';
+  const email = location.state?.email || localStorage.getItem('pendingVerifyEmail') || '';
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const inputsRef = useRef([]);
@@ -65,6 +65,7 @@ const VerifyOTP = () => {
     setLoading(true);
     try {
       await authAPI.verifyOtp({ email, otp: otpString });
+      localStorage.removeItem('pendingVerifyEmail');
       await checkAuth();
       toast.success('Account verified!');
       navigate('/dashboard');
@@ -75,12 +76,17 @@ const VerifyOTP = () => {
     }
   };
 
+  const handleStartOver = () => {
+    localStorage.removeItem('pendingVerifyEmail');
+    navigate('/register');
+  };
+
   return (
     <div className="auth-wrapper">
       <div className="auth-card-clean" ref={cardRef}>
         <div className="auth-header">
           <h2>Enter Code</h2>
-          <p>We sent a 6-digit code to {email}</p>
+          <p>We sent a 6-digit code to <strong>{email}</strong></p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -104,6 +110,16 @@ const VerifyOTP = () => {
             {loading ? 'Verifying...' : 'Verify Code'}
           </button>
         </form>
+
+        <div className="auth-footer-clean" style={{ marginTop: '20px' }}>
+          Didn't receive code or wrong email?{' '}
+          <button
+            onClick={handleStartOver}
+            style={{ background: 'transparent', border: 'none', color: 'var(--brand-coral)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Go back to Sign Up
+          </button>
+        </div>
       </div>
     </div>
   );

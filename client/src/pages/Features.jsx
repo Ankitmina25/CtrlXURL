@@ -13,22 +13,29 @@ const Features = () => {
   const cardsRef = useRef([]);
 
   useEffect(() => {
-    cardsRef.current.forEach((card) => {
+    if (cardsRef.current[0]) {
+      gsap.fromTo(
+        cardsRef.current[0],
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }
+      );
+    }
+
+    cardsRef.current.slice(1).forEach((card) => {
       if (!card) return;
       gsap.fromTo(
         card,
-        { opacity: 0, y: 60, scale: 0.95, rotateX: 4 },
+        { opacity: 0, y: 50, scale: 0.98 },
         {
           opacity: 1,
           y: 0,
           scale: 1,
-          rotateX: 0,
-          duration: 0.8,
-          ease: 'power3.out',
+          duration: 0.7,
+          ease: 'power2.out',
           scrollTrigger: {
             trigger: card,
-            start: 'top 85%',
-            toggleActions: 'play none none reverse',
+            start: 'top 88%',
+            once: true,
           },
         }
       );
@@ -43,7 +50,7 @@ const Features = () => {
     {
       icon: <FiTag style={{ color: 'var(--brand-coral)', fontSize: '2rem' }} />,
       title: 'Custom Vanity Short Codes',
-      desc: 'Customize yer short links with yer brand name or custom aliases (3 to 10 characters). Build brand recognition with every link shared.',
+      desc: 'Customize your short links with your brand name or custom aliases (3 to 10 characters). Build brand recognition with every link shared.',
     },
     {
       icon: <FiMaximize style={{ color: 'var(--brand-coral)', fontSize: '2rem' }} />,
@@ -53,17 +60,17 @@ const Features = () => {
     {
       icon: <FiClock style={{ color: 'var(--brand-coral)', fontSize: '2rem' }} />,
       title: 'Link Expiration Controls',
-      desc: 'Set custom expiration dates for sensitive or time-limited links. Expired links are automatically deactivated to protect yer campaigns.',
+      desc: 'Set custom expiration dates for sensitive or time-limited links. Expired links are automatically deactivated to protect your campaigns.',
     },
     {
       icon: <FiBarChart2 style={{ color: 'var(--brand-coral)', fontSize: '2rem' }} />,
-      title: 'Real-Time Click Analytics',
-      desc: 'Monitor yer link performance with live click counters. Inspect total clicks, active vs expired links, and historical trend data.',
+      title: 'Deep Click Stream Analytics',
+      desc: 'Inspect real-time device distributions (Desktop, Mobile, Tablet), operating systems, top browsers, IP logs, and live click timelines.',
     },
     {
       icon: <FiShield style={{ color: 'var(--brand-coral)', fontSize: '2rem' }} />,
-      title: 'Email OTP Cipher Verification',
-      desc: 'Protect yer account with 6-digit email cipher authentication. Ensures only authorized captains can manage yer link catalog.',
+      title: 'Email OTP Verification',
+      desc: 'Protect your account with 6-digit email OTP authentication. Ensures only authorized users can manage your link catalog.',
     },
     {
       icon: <FiZap style={{ color: 'var(--brand-coral)', fontSize: '2rem' }} />,
@@ -88,7 +95,7 @@ const Features = () => {
           </h1>
 
           <p className="hero-subtitle">
-            Explore the full set of tools engineered to make yer short URLs branded, secure, and trackable.
+            Explore the full set of tools engineered to make your short URLs branded, secure, and trackable.
           </p>
         </section>
 
@@ -115,7 +122,7 @@ const Features = () => {
         >
           <h2>Try all CtrlXURL features for free</h2>
           <p style={{ fontSize: '1.1rem', opacity: 0.8, maxWidth: '560px', margin: '12px auto 28px' }}>
-            No credit card required. Start shortening yer links in seconds.
+            No credit card required. Start shortening your links in seconds.
           </p>
           <Link to={ctaTarget} className="btn btn-coral btn-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
             {user ? 'Go to Dashboard' : 'Get Started Free'} <FiArrowRight />
@@ -131,9 +138,15 @@ const Features = () => {
           <Link to="/contact">Contact US</Link>
         </div>
         <div className="footer-socials">
-          <FiGithub />
-          <FiTwitter />
-          <FiLinkedin />
+          <a href="https://github.com/Ankitmina25" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+            <FiGithub />
+          </a>
+          <a href="https://x.com/AnkitMeena2512" target="_blank" rel="noopener noreferrer" aria-label="X">
+            <FiTwitter />
+          </a>
+          <a href="https://www.linkedin.com/in/ankit-meena77/?isSelfProfile=true" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+            <FiLinkedin />
+          </a>
           <FiGlobe />
         </div>
       </footer>

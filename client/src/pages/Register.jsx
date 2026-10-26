@@ -33,6 +33,7 @@ const Register = () => {
     setLoading(true);
     try {
       await authAPI.register({ username, email, password });
+      localStorage.setItem('pendingVerifyEmail', email);
       toast.success('Verification code sent to email!');
       navigate('/verify-otp', { state: { email } });
     } catch (err) {
@@ -56,7 +57,7 @@ const Register = () => {
             <input
               className="form-input-clean"
               type="text"
-              placeholder="alexmorgan"
+              placeholder="Enter your username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -68,7 +69,7 @@ const Register = () => {
             <input
               className="form-input-clean"
               type="email"
-              placeholder="name@example.com"
+              placeholder="name@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -80,7 +81,7 @@ const Register = () => {
             <input
               className="form-input-clean"
               type="password"
-              placeholder="At least 8 characters"
+              placeholder="Enter a secure password (min. 8 characters)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               minLength={8}

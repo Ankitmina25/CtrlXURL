@@ -1,7 +1,9 @@
 const urlModel = require('../models/url.models');
 const crypto = require('crypto');
 const QRCode = require("qrcode");
-
+const clickHistoryModel = require("../models/clickHistory.models");
+const UAParser = require("ua-parser-js");
+const { redisClient } = require("../config/Redis");
 const regex = /^[a-z0-9-]{3,10}$/;
 
 const createShortCode = async (req, res) => {
@@ -52,12 +54,22 @@ const createShortCode = async (req, res) => {
             shortCode = crypto.randomBytes(3).toString("hex");
         }
         const url = await urlModel.create({
-            originalUrl,
-            shortCode,
-            user: req.user._id,
-            expiryDate
-        });
-        const shortUrl = `${process.env.BASE_URL}/api/url/${shortCode}`;
+        originalUrl,
+        shortCode,
+        user: req.user._id,
+        expiryDate
+});
+
+await redisClient.set(
+    `url:${shortCode}`,
+    JSON.stringify({
+        id: url._id.toString(),
+        originalUrl: url.originalUrl,
+        expiryDate: url.expiryDate
+    })
+);
+
+const shortUrl = `${process.env.BASE_URL}/api/url/${shortCode}`;
         const qrCode = await QRCode.toDataURL(shortUrl);
         return res.status(201).json({
             message: "Short URL created successfully",
@@ -80,28 +92,88 @@ const createShortCode = async (req, res) => {
 const redirectUrl = async (req, res) => {
     try {
         const { shortCode } = req.params;
-        const url = await urlModel.findOne({
-            shortCode
+
+        let cachedUrl = await redisClient.get(`url:${shortCode}`);
+        let url;
+
+        if (cachedUrl) {
+            console.log("Redis Cache HIT");
+
+            const parsedUrl = JSON.parse(cachedUrl);
+
+            url = {
+                _id: parsedUrl.id,
+                originalUrl: parsedUrl.originalUrl,
+                expiryDate: parsedUrl.expiryDate,
+                clicks: parsedUrl.clicks
+            };
+
+            if (url.expiryDate && new Date(url.expiryDate) < new Date()) {
+                return res.status(410).json({
+                    message: "This URL has expired"
+                });
+            }
+
+        } else {
+            console.log("Redis Cache MISS");
+
+            url = await urlModel.findOne({
+                shortCode
+            });
+
+            if (!url) {
+                return res.status(404).json({
+                    message: "URL not found"
+                });
+            }
+
+            if (url.expiryDate && url.expiryDate < new Date()) {
+                return res.status(410).json({
+                    message: "This URL has expired"
+                });
+            }
+
+            await redisClient.set(
+                `url:${shortCode}`,
+                JSON.stringify({
+                    id: url._id.toString(),
+                    originalUrl: url.originalUrl,
+                    expiryDate: url.expiryDate
+                })
+            );
+        }
+
+        const parser = new UAParser(
+            req.headers["user-agent"] || ""
+        );
+
+        const result = parser.getResult();
+
+        await clickHistoryModel.create({
+            url: url._id,
+            ip: req.ip,
+            browser: result.browser.name || "Unknown",
+            device: result.device.type || "Desktop",
+            os: result.os.name || "Unknown"
         });
-        if (!url) {
-            return res.status(404).json({
-                message: "URL not found"
-            });
-        }
-        if (url.expiryDate && url.expiryDate < new Date()) {
-            return res.status(410).json({
-                message: "This URL has expired"
-            });
-        }
-        url.clicks++;
-        await url.save();
+
+        await urlModel.findByIdAndUpdate(
+            url._id,
+            {
+                $inc: {
+                    clicks: 1
+                }
+            }
+        );
+
         return res.redirect(url.originalUrl);
+
     } catch (err) {
         return res.status(500).json({
             message: err.message
-        })
+        });
     }
-}
+};
 
 const getUrls = async (req, res) => {
     try {
@@ -189,12 +261,16 @@ const getAnalytics = async (req, res) => {
                 message: "You are not authorized user"
             });
         }
+        const clickHistory = await clickHistoryModel.find({ url: id })
+            .sort({ clickedAt: -1 })
+            .select("ip browser device os clickedAt");
         return res.status(200).json({
             originalUrl: url.originalUrl,
             shortCode: url.shortCode,
             clicks: url.clicks,
             createdAt: url.createdAt,
-            updatedAt: url.updatedAt
+            updatedAt: url.updatedAt,
+            clickHistory
         });
     } catch (err) {
         message: err.message;

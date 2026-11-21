@@ -2,48 +2,57 @@
 # Puppet Manifest — CtrlXURL Server Setup
 # File: puppet/ctrlxurl.pp
 #
-# Ye manifest ek naye Ubuntu server par:
-#   1. Docker install karta hai
-#   2. Docker service start karta hai
-#   3. App ke liye /opt/ctrlxurl folder banata hai
+# Production target: Ubuntu 22.04
+# Local demo:        Mac (Docker Desktop)
 #
 # Apply karne ka command:
-#   sudo puppet apply puppet/ctrlxurl.pp
+#   sudo puppet apply puppet/ctrlxurl.pp --noop   ← dry run
+#   sudo puppet apply puppet/ctrlxurl.pp           ← actual apply
 # =============================================================
 
-# Step 1: Docker install karo
+# Step 1: Docker install karo (sirf agar nahi hai toh)
 exec { 'install-docker':
   command => '/bin/bash -c "curl -fsSL https://get.docker.com | sh"',
-  creates => '/usr/bin/docker',
+  creates => '/usr/bin/docker',      # agar /usr/bin/docker hai toh skip
   path    => ['/usr/bin', '/bin'],
 }
 
-# Step 2: Docker service start karo (aur boot par bhi chalaye)
-service { 'docker':
-  ensure  => running,
-  enable  => true,
-  require => Exec['install-docker'],
-}
-
-# Step 3: App folder banao
+# Step 2: App ke liye folder banao
 file { '/opt/ctrlxurl':
-  ensure  => directory,
-  owner   => 'root',
-  group   => 'root',
-  mode    => '0755',
-  require => Service['docker'],
+  ensure => directory,
+  owner  => 'root',
+  group  => 'root',
+  mode   => '0755',
 }
 
-# Step 4: Port 3000 (backend) aur 80 (frontend) open karo
-exec { 'open-port-3000':
-  command => '/usr/sbin/ufw allow 3000/tcp',
-  unless  => '/usr/sbin/ufw status | grep -q 3000',
-  require => File['/opt/ctrlxurl'],
-}
+# Step 3: Docker service ensure (sirf Linux/Ubuntu par)
+# Mac par Docker Desktop manually start hota hai
+if $facts['os']['family'] == 'Debian' or $facts['os']['family'] == 'RedHat' {
 
-exec { 'open-port-80':
-  command => '/usr/sbin/ufw allow 80/tcp',
-  unless  => '/usr/sbin/ufw status | grep -q "80/tcp"',
-  require => File['/opt/ctrlxurl'],
-}
+  service { 'docker':
+    ensure  => running,
+    enable  => true,
+    require => Exec['install-docker'],
+  }
 
+  # Step 4: Firewall ports open karo (sirf Linux par, ufw use karke)
+  exec { 'open-port-80':
+    command => '/usr/sbin/ufw allow 80/tcp',
+    unless  => '/usr/sbin/ufw status | grep -q "80/tcp"',
+    path    => ['/usr/sbin', '/usr/bin'],
+    require => File['/opt/ctrlxurl'],
+  }
+
+  exec { 'open-port-3000':
+    command => '/usr/sbin/ufw allow 3000/tcp',
+    unless  => '/usr/sbin/ufw status | grep -q 3000',
+    path    => ['/usr/sbin', '/usr/bin'],
+    require => File['/opt/ctrlxurl'],
+  }
+
+} else {
+  # Mac par sirf notice print karo
+  notify { 'mac-notice':
+    message => 'Mac detected: Docker Desktop use karo. Firewall (ufw) sirf Linux par configure hoga.',
+  }
+}

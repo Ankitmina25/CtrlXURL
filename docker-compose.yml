@@ -1,81 +1,72 @@
 # =============================================================
-# Docker Compose — CtrlXURL
+# Docker Compose — CtrlXURL (Full Stack)
 #
-# Docker Compose ek tool hai jo multiple Docker containers ko
-# ek saath ek single command se manage karta hai.
-#
-# Is file mein 3 services hain:
-#   1. redis    — Caching layer (URL data fast serve karne ke liye)
-#   2. backend  — Node.js Express API server
-#   3. nagios   — 24/7 monitoring dashboard
-#
-# Commands:
-#   Start all containers : docker compose up -d
-#   Stop all containers  : docker compose down
-#   Check status         : docker compose ps
-#   View logs            : docker compose logs backend
+# Services:
+#   1. redis    — Caching layer (Port 6379)
+#   2. backend  — Node.js Express API server (Port 3000)
+#   3. frontend — React UI + Nginx (Port 5173)
+#   4. nagios   — Monitoring dashboard (Port 8080)
 # =============================================================
 
 services:
 
-  # ── Service 1: Redis Cache ──────────────────────────────────────────────────
-  # Redis ek in-memory database hai.
-  # Jab bhi koi short URL access karta hai, Redis se cache hota hai
-  # taaki MongoDB par unnecessary load na pade aur response fast mile.
+  # ── 1. Redis Cache ──────────────────────────────────────────
   redis:
-    image: redis:7-alpine          # Lightweight Alpine Linux based Redis image
+    image: redis:7-alpine
     container_name: ctrlxurl-redis
-    restart: unless-stopped        # Container crash ho to automatically restart
-    ports:
-      - "6379:6379"                # Host port 6379 -> Container port 6379
-    networks:
-      - ctrlxurl-net               # Internal Docker network
-
-  # ── Service 2: Backend API (Node.js / Express) ─────────────────────────────
-  # Ye hamara main application server hai.
-  # Yahan se URLs shorten hoti hain, redirects handle hote hain,
-  # aur /health endpoint Nagios ke liye available hai.
-  backend:
-    build: ./server                # ./server/Dockerfile se image build hogi
-    container_name: ctrlxurl-backend
     restart: unless-stopped
     ports:
-      - "3000:3000"                # API accessible at http://localhost:3000
-    env_file:
-      - ./server/.env              # Environment variables (DB URI, JWT secret etc.)
-    environment:
-      - REDIS_URL=redis://redis:6379   # Redis ko Docker hostname se connect karo
-    depends_on:
-      - redis                      # Redis pehle start hona chahiye
+      - "6379:6379"
     networks:
       - ctrlxurl-net
 
-  # ── Service 3: Nagios Monitoring ───────────────────────────────────────────
-  # Nagios ek open-source monitoring tool hai.
-  # Ye 24/7 check karta hai ki backend alive hai ya nahi.
-  # Agar backend crash ho to Nagios alert generate karta hai.
-  # Web UI: http://localhost:8080/nagios
+  # ── 2. Backend API (Node.js / Express) ──────────────────────
+  backend:
+    build: ./server
+    container_name: ctrlxurl-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./server/.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - CLIENT_URL=http://localhost:5173
+    depends_on:
+      - redis
+    networks:
+      - ctrlxurl-net
+
+  # ── 3. Frontend Web App (React + Nginx) ─────────────────────
+  frontend:
+    build: ./client
+    container_name: ctrlxurl-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"                  # Open in browser: http://localhost:5173
+    depends_on:
+      - backend
+    networks:
+      - ctrlxurl-net
+
+  # ── 4. Nagios Monitoring ────────────────────────────────────
   nagios:
     image: jasonrivers/nagios:latest
-    platform: linux/amd64          # Required for Apple M-series (ARM) chips
+    platform: linux/amd64
     container_name: ctrlxurl-nagios
     restart: unless-stopped
     ports:
-      - "8080:80"                  # Nagios Web UI at http://localhost:8080/nagios
+      - "8080:80"                  # Open in browser: http://localhost:8080/nagios
     environment:
       - NAGIOSADMIN_USER=nagiosadmin
       - NAGIOSADMIN_PASS=nagios123
     volumes:
-      # Mount our custom config into Nagios config directory (read-only)
       - ./nagios/ctrlxurl-nagios.cfg:/opt/nagios/etc/conf.d/ctrlxurl.cfg:ro
     depends_on:
       - backend
     networks:
       - ctrlxurl-net
 
-# ── Shared Network ──────────────────────────────────────────────────────────
-# All containers communicate using this internal bridge network.
-# Container names act as hostnames (e.g. "backend", "redis", "nagios").
 networks:
   ctrlxurl-net:
     driver: bridge

@@ -1,80 +1,77 @@
 # =============================================================
-# Puppet Manifest — CtrlXURL Server Configuration
+# Puppet Manifest — CtrlXURL Server & Docker Container Management
 # File: puppet/ctrlxurl.pp
 #
-# Puppet ek Configuration Management tool hai.
-# Ye declarative language use karta hai — hum define karte hain
-# "server ka desired state kya hona chahiye" aur Puppet ensure
-# karta hai ki server hamesha us state mein rahe.
-#
-# Agar koi manually Docker uninstall kar de, ya firewall rule
-# hata de — Puppet agle run mein automatically fix kar dega.
-# Isse "Configuration Drift Prevention" kehte hain.
-#
-# Target OS : Ubuntu 22.04 (production server)
-# Local demo : Mac (Docker Desktop)
-#
-# Commands:
-#   Dry run (no changes, only shows what would happen):
-#     sudo puppet apply puppet/ctrlxurl.pp --noop
-#
-#   Actual apply (makes real changes on server):
-#     sudo puppet apply puppet/ctrlxurl.pp
+# Advanced Capabilities:
+#   1. Golden .env Master File Management on Host
+#   2. Docker Container Lifecycle (Redis & Backend)
+#   3. IN-CONTAINER CONFIG DRIFT PROTECTION:
+#      - Injects /app/.env into running 'ctrlxurl-backend'
+#      - If /app/.env is deleted or altered inside the container,
+#        Puppet automatically re-injects the golden configuration!
+#   4. Pull Model Automation (Cron every 2 minutes)
 # =============================================================
 
-# ── Resource 1: Install Docker ─────────────────────────────────────────────
-# Puppet checks if /usr/bin/docker exists.
-# If it does NOT exist, it runs the official Docker install script.
-# If it already exists, this step is skipped automatically.
-exec { 'install-docker':
-  command => '/bin/bash -c "curl -fsSL https://get.docker.com | sh"',
-  creates => '/usr/bin/docker',    # Skip if this file already exists
-  path    => ['/usr/bin', '/bin'],
+$project_dir  = '/Users/ankitmeena/CodeBase/ProjectLab/URL-Shortner'
+$docker_bin   = '/usr/local/bin/docker'
+$compose_bin  = '/usr/local/bin/docker-compose'
+
+$root_group = $facts['os']['family'] ? {
+  'Darwin' => 'wheel',
+  default  => 'root',
 }
 
-# ── Resource 2: Create Application Directory ───────────────────────────────
-# Puppet ensures /opt/ctrlxurl directory exists with correct permissions.
-# If someone deletes it, Puppet recreates it on next run.
+# ── 1. App Directory ─────────────────────────────────────────
 file { '/opt/ctrlxurl':
   ensure => directory,
   owner  => 'root',
-  group  => 'root',
+  group  => $root_group,
   mode   => '0755',
 }
 
-# ── Resources 3 & 4: Linux-only (Ubuntu/Debian/RedHat) ────────────────────
-# These resources only apply on Linux production servers.
-# On Mac, Docker Desktop is used instead — Puppet skips these blocks.
-if $facts['os']['family'] == 'Debian' or $facts['os']['family'] == 'RedHat' {
+# ── 2. Master Golden .env File on Host ────────────────────────
+file { '/opt/ctrlxurl/.env':
+  ensure  => file,
+  owner   => 'root',
+  group   => $root_group,
+  mode    => '0600',
+  content => "PORT=3000\nNODE_ENV=production\nBASE_URL=http://localhost:3000\nREDIS_URL=redis://redis:6379\nMANAGED_BY=Puppet-DevOps\n",
+  require => File['/opt/ctrlxurl'],
+}
 
-  # Ensure Docker service is running and starts on system boot
-  service { 'docker':
-    ensure  => running,   # Docker daemon must be running
-    enable  => true,      # Auto-start on server reboot
-    require => Exec['install-docker'],
-  }
+# ── 3. Ensure Redis Container is Running ─────────────────────
+exec { 'ensure-redis-container-running':
+  command     => "${compose_bin} -f ${project_dir}/docker-compose.yml up -d redis",
+  unless      => "${docker_bin} ps --filter 'name=ctrlxurl-redis' --filter 'status=running' --format '{{.Names}}' | grep -q 'ctrlxurl-redis'",
+  path        => ['/usr/local/bin', '/usr/bin', '/bin'],
+  cwd         => $project_dir,
+  environment => ['HOME=/root'],
+}
 
-  # Open port 80 (HTTP / Frontend) in UFW firewall
-  exec { 'open-port-80':
-    command => '/usr/sbin/ufw allow 80/tcp',
-    unless  => '/usr/sbin/ufw status | grep -q "80/tcp"',  # Skip if already open
-    path    => ['/usr/sbin', '/usr/bin'],
-    require => File['/opt/ctrlxurl'],
-  }
+# ── 4. Ensure Backend Container is Running ───────────────────
+exec { 'ensure-backend-container-running':
+  command     => "${compose_bin} -f ${project_dir}/docker-compose.yml up -d backend",
+  unless      => "${docker_bin} ps --filter 'name=ctrlxurl-backend' --filter 'status=running' --format '{{.Names}}' | grep -q 'ctrlxurl-backend'",
+  path        => ['/usr/local/bin', '/usr/bin', '/bin'],
+  cwd         => $project_dir,
+  environment => ['HOME=/root'],
+  require     => Exec['ensure-redis-container-running'],
+}
 
-  # Open port 3000 (Backend API) in UFW firewall
-  exec { 'open-port-3000':
-    command => '/usr/sbin/ufw allow 3000/tcp',
-    unless  => '/usr/sbin/ufw status | grep -q 3000',       # Skip if already open
-    path    => ['/usr/sbin', '/usr/bin'],
-    require => File['/opt/ctrlxurl'],
-  }
+# ── 5. IN-CONTAINER MANAGEMENT: Protect /app/.env Inside Container
+# If /app/.env inside container is deleted or modified, restore it!
+exec { 'sync-env-inside-backend-container':
+  command     => "${docker_bin} cp /opt/ctrlxurl/.env ctrlxurl-backend:/app/.env",
+  unless      => "/bin/bash -c '${docker_bin} ps -q -f name=ctrlxurl-backend | grep -q . && ${docker_bin} exec ctrlxurl-backend test -f /app/.env && [ \"\$(${docker_bin} exec ctrlxurl-backend wc -l < /app/.env | tr -d \" \")\" = \"\$(wc -l < /opt/ctrlxurl/.env | tr -d \" \")\" ]'",
+  path        => ['/usr/local/bin', '/usr/bin', '/bin'],
+  environment => ['HOME=/root'],
+  require     => [Exec['ensure-backend-container-running'], File['/opt/ctrlxurl/.env']],
+}
 
-} else {
-
-  # On Mac: Print an informational notice instead
-  notify { 'mac-notice':
-    message => 'Mac detected: Use Docker Desktop to manage services. UFW firewall rules apply only on Linux servers.',
-  }
-
+# ── 6. PULL MODEL: Automatic Self-Healing Every 2 Minutes ────
+cron { 'puppet-docker-auto-heal':
+  command => "export PATH=\$PATH:/usr/local/bin:/usr/bin:/opt/puppetlabs/bin && puppet apply ${project_dir}/puppet/ctrlxurl.pp > /tmp/puppet_heal.log 2>&1",
+  user    => 'root',
+  minute  => '*/2',
+  ensure  => present,
 }

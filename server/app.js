@@ -26,4 +26,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/url", urlRoutes);
 app.use("/api/contact", contactRoutes);
 
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+
 module.exports = app;

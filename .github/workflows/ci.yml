@@ -1,0 +1,32 @@
+name: CI — Test & Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-build:
+    name: Test Backend + Build Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm install
+
+      - name: Run backend test
+        working-directory: server
+        run: npm test
+
+      - name: Build Docker image (verify Dockerfile works)
+        run: docker build -t ctrlxurl-backend ./server

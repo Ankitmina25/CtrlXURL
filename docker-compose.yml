@@ -1,0 +1,35 @@
+# CtrlXURL — Simple Docker Compose
+# Start karo: docker compose up -d
+# Band karo: docker compose down
+
+services:
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ctrlxurl-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - ctrlxurl-net
+
+  # Node.js Backend
+  backend:
+    build: ./server
+    container_name: ctrlxurl-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./server/.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - ctrlxurl-net
+
+networks:
+  ctrlxurl-net:
+    driver: bridge

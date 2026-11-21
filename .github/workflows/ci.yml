@@ -1,4 +1,4 @@
-name: CI — Test & Build
+name: CI - Test and Build
 
 on:
   push:
@@ -6,27 +6,38 @@ on:
   pull_request:
     branches: [main]
 
+# GitHub Actions automatically runs this workflow on every git push to main.
+# It verifies that the backend works and the Docker image builds successfully.
+# This prevents broken code from reaching the production server.
+
 jobs:
   test-and-build:
     name: Test Backend + Build Docker Image
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Download the repository code onto the GitHub Actions runner
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Step 2: Install Node.js v20 on the runner
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      # Step 3: Install all backend npm dependencies
       - name: Install backend dependencies
         working-directory: server
         run: npm install
 
+      # Step 4: Run the test script defined in server/package.json
+      # If tests fail, the pipeline stops here and merge is blocked
       - name: Run backend test
         working-directory: server
         run: npm test
 
-      - name: Build Docker image (verify Dockerfile works)
+      # Step 5: Build the Docker image to verify the Dockerfile is valid
+      # This catches any Docker build errors before they reach production
+      - name: Build Docker image
         run: docker build -t ctrlxurl-backend ./server

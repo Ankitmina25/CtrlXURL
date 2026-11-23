@@ -665,3 +665,189 @@ Email: ankitmina2512@gmail.com
 ---
 
 *Terraform + Puppet + Docker + Nagios — Yeh charo milke ek production-ready DevOps pipeline banate hain* 🔥
+
+---
+
+## ⚡ QUICK START — Project Chalane Ki Poori Commands (Flow Mein)
+
+> Copy-paste karo — ek ek step follow karo. Bas itna!
+
+---
+
+### 🔁 STEP 0 — Pehli Baar Setup (Sirf Ek Baar Karna Hai)
+
+```bash
+# 0.1 Repo clone karo
+git clone https://github.com/Ankitmina25/CtrlXURL.git
+cd URL-Shortner
+
+# 0.2 Backend .env file banao (apni real values daalo)
+cp server/.env.example server/.env   # ya manually banao
+# nano server/.env   → MONGO_URI, JWT_SECRET, etc. daalo
+
+# 0.3 Terraform provider download karo (internet chahiye — sirf ek baar)
+cd terraform
+terraform init
+cd ..
+```
+
+---
+
+### 🚀 STEP 1 — Project Start Karo (Terraform se)
+
+```bash
+# Terraform folder mein jaao
+cd terraform
+
+# Pehle dekho kya banega (optional but good practice)
+terraform plan
+
+# Apply karo — sab containers ban'ge automatically!
+# (Pehli baar 3-5 min lagenge — Docker images build hongi)
+terraform apply -auto-approve
+
+# Wapas project root mein jaao
+cd ..
+
+# Verify karo — 4 containers chal rahe hain?
+docker ps
+```
+
+**Expected output of `docker ps`:**
+```
+CONTAINER ID   IMAGE                      PORTS                    NAMES
+xxxxxxxxxxxx   jasonrivers/nagios:latest  0.0.0.0:8080->80/tcp     ctrlxurl-nagios
+xxxxxxxxxxxx   ctrlxurl-frontend:latest   0.0.0.0:5173->80/tcp     ctrlxurl-frontend
+xxxxxxxxxxxx   ctrlxurl-backend:latest    0.0.0.0:3000->3000/tcp   ctrlxurl-backend
+xxxxxxxxxxxx   redis:7-alpine             0.0.0.0:6379->6379/tcp   ctrlxurl-redis
+```
+
+---
+
+### 🌐 STEP 2 — Browser Mein Open Karo
+
+```
+Frontend App  →  http://localhost:5173
+Backend API   →  http://localhost:3000/health
+Nagios        →  http://localhost:8080/nagios  (user: nagiosadmin / pass: nagios123)
+```
+
+---
+
+### 🔧 STEP 3 — Puppet Chalaao (Config Management + Self-Healing)
+
+```bash
+# PATH set karo (Mac par zaruri hai)
+export PATH="/opt/puppetlabs/bin:$PATH"
+
+# Puppet apply karo — desired state enforce karega
+sudo puppet apply puppet/ctrlxurl.pp
+
+# (Optional) Background mein auto-heal daemon start karo
+# Yeh har 2 minute mein puppet apply karega automatically
+sudo nohup puppet/auto-heal-daemon.sh > /dev/null 2>&1 &
+
+# Puppet logs dekho
+tail -f /tmp/puppet_heal.log
+```
+
+---
+
+### 🔍 STEP 4 — Containers Ko Monitor Karo
+
+```bash
+# Sab containers ka status
+docker ps
+
+# Backend logs dekho (live)
+docker logs ctrlxurl-backend --follow
+
+# Frontend logs dekho
+docker logs ctrlxurl-frontend
+
+# Nagios logs dekho
+docker logs ctrlxurl-nagios
+
+# Backend API health check
+curl http://localhost:3000/health
+# Expected: {"status":"ok"}
+
+# Redis test karo
+docker exec -it ctrlxurl-redis redis-cli ping
+# Expected: PONG
+
+# Terraform output dekho (URLs)
+cd terraform && terraform output && cd ..
+```
+
+---
+
+### 🛑 STEP 5 — Project Band Karo
+
+```bash
+# Terraform se sab containers destroy karo
+cd terraform
+terraform destroy -auto-approve
+cd ..
+
+# Puppet daemon bhi band karo (agar chala raha hai)
+sudo pkill -f auto-heal-daemon.sh
+```
+
+---
+
+### 🔄 STEP 6 — Dobara Start Karna Hai?
+
+```bash
+# Bas itna karo:
+cd terraform
+terraform apply -auto-approve
+cd ..
+docker ps   # verify
+```
+
+---
+
+### 🧹 BONUS — Useful Debug Commands
+
+```bash
+# Kisi container ke andar jaao
+docker exec -it ctrlxurl-backend sh
+docker exec -it ctrlxurl-redis sh
+
+# Container restart karo
+docker restart ctrlxurl-backend
+
+# Sirf ek container band karo
+docker stop ctrlxurl-nagios
+
+# Docker images dekho
+docker images
+
+# Docker network dekho
+docker network inspect ctrlxurl-network
+
+# Terraform current state dekho
+cd terraform && terraform show
+
+# Puppet noop mode (kya change hoga — apply nahi karega)
+sudo puppet apply --noop puppet/ctrlxurl.pp
+```
+
+---
+
+### 📋 Ek Nazar Mein — Full Flow
+
+```
+git clone  →  terraform init  →  terraform apply  →  browser open  →  puppet apply
+   ↓                                    ↓                                   ↓
+ Code lao                     4 containers ready                     Self-healing ON
+
+Kaam karo...
+
+terraform destroy  →  Project band
+```
+
+---
+
+*Happy Coding & DevOps! 🚀*

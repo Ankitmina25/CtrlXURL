@@ -88,8 +88,15 @@ resource "docker_container" "backend" {
     external = var.backend_port
   }
 
-  # Environment variables — secrets yahan inject hote hain
-  # Note: .env file se read karna best practice hai production mein
+  # server/.env file directly container mein mount karo
+  # Isse MONGO_URI, JWT_TOKEN, EMAIL_USER sab env vars mil jaate hain
+  volumes {
+    host_path      = "${var.project_dir}/server/.env"
+    container_path = "/app/.env"
+    read_only      = true
+  }
+
+  # REDIS_URL override karo — Docker network name se (127.0.0.1 nahi chalega)
   env = [
     "REDIS_URL=redis://${var.project_name}-redis:6379",
     "NODE_ENV=production",

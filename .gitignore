@@ -25,3 +25,9 @@ yarn-error.log*
 
 # Test coverage
 coverage/
+
+# Terraform state & cache (secrets hoti hain — kabhi push mat karo!)
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/.terraform.lock.hcl

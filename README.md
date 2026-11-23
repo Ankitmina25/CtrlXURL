@@ -1,324 +1,667 @@
-# 🚀 CtrlXURL — End-to-End DevOps Lifecycle Project
+# CtrlXURL — Professional URL Shortener & DevOps Showcase
 
-> **Project:** CtrlXURL (URL Shortener & Real-Time Analytics)  
-> **Author:** Ankit Meena  
-> **Application Tech Stack:** React (Vite) + Node.js (Express) + MongoDB Atlas + Redis  
-> **DevOps Tools:** **GitHub Actions (CI)** + **Docker & Compose** + **Puppet (Self-Healing IaC)** + **Nagios (24/7 Monitoring)**
-
----
-
-## 📌 1. Project Overview (प्रोजेक्ट क्या है?)
-
-CtrlXURL ek modern **URL Shortener Web Application** hai:
-1. User ek lambi URL input karta hai (e.g., `https://example.com/very/long/link/xyz`).
-2. App uske liye ek unique chhota link banata hai (e.g., `http://localhost:3000/api/url/a1b2c3`).
-3. Chhote link par click karne par user original lambe URL par redirect ho jata hai.
-4. **Redis Cache** fast redirection ensure karta hai taaki database par baar-baar load na pade.
-
-Is project me humne **complete end-to-end DevOps culture implement kiya hai** taaki:
-- Code har machine par bina kisi error ke chale (**Docker**).
-- Code push hote hi automatically test aur build ho jaye (**GitHub Actions**).
-- Server configuration aur container state automatically self-heal ho jaye (**Puppet**).
-- Website uptime, API health, aur server performance 24/7 monitor ho sake (**Nagios**).
+> **Hinglish mein samjhao, English mein code karo** 🚀
+>
+> Ek full-stack URL shortener jo **4 DevOps tools** ke sath deploy hota hai:
+> Puppet (Config Mgmt) + Terraform (IaC) + Docker (Containers) + Nagios (Monitoring)
 
 ---
 
-## 🔄 2. End-to-End DevOps Lifecycle Architecture
+## 📐 Architecture
 
-```text
-[ Developer ]
-      │
-      ▼  (1. git push origin main)
-[ GitHub Repository ]
-      │
-      ▼  (2. Automatic CI Trigger)
-[ GitHub Actions ] ──► (npm install ➔ npm test ➔ docker build verification)
-      │
-      ▼  (3. Multi-Container Orchestration)
-[ Docker Compose ] ──► ┌────────────────────────────────────────────────────────┐
-                       │  ● ctrlxurl-frontend (React + Nginx : Port 5173)       │
-                       │  ● ctrlxurl-backend  (Node.js API    : Port 3000)       │
-                       │  ● ctrlxurl-redis    (In-Memory Cache : Port 6379)      │
-                       │  ● ctrlxurl-nagios   (Monitoring UI  : Port 8080)       │
-                       └────────────────────────────────────────────────────────┘
-                                     ▲                            ▲
-          (4. Pull Model Every 2m)   │                            │  (5. Continuous Health Checks)
-                       [ Puppet Daemon ]               [ Nagios Monitoring ]
-                       (Heals .env / Containers)       (Ping, /health, CPU, Disk)
+```
+                        ┌──────────────────────────────────────────┐
+                        │           DEVOPS LAYER                   │
+                        │                                          │
+                        │  [Terraform] ──── manages ────► [Docker Containers]
+                        │  [Puppet]   ──── heals  ────►  [Running State]
+                        │  [Nagios]   ──── watches ───►  [Health Checks]
+                        └──────────────────────────────────────────┘
+                                          │
+                        ┌─────────────────▼──────────────────────┐
+                        │           APP LAYER                    │
+                        │                                        │
+   Browser ──► http://localhost:5173 ──► [Frontend: React+Nginx] │
+                        │                       │                │
+                        │                       ▼                │
+                        │               [Backend: Node.js]       │
+                        │                  Port 3000             │
+                        │                  /health               │
+                        │                  /api/shorten          │
+                        │                       │                │
+                        │                       ▼                │
+                        │               [Redis: Cache]           │
+                        │                  Port 6379             │
+                        └────────────────────────────────────────┘
+                                          │
+   Browser ──► http://localhost:8080/nagios ──► [Nagios Dashboard]
 ```
 
 ---
 
-## 🛠️ 3. Tool-by-Tool Detailed Explanation (Kyu Use Kiya? Kya Kaam Hai?)
+## 🗂️ Project File Structure
+
+```
+URL-Shortner/
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # GitHub Actions CI pipeline
+│
+├── client/                     # React Frontend
+│   ├── src/
+│   │   └── api.js              # Backend API calls
+│   ├── Dockerfile              # Multi-stage build: Node → Nginx
+│   ├── nginx.conf              # Gzip, React Router, /api/ proxy
+│   └── .dockerignore
+│
+├── server/                     # Node.js Backend
+│   ├── app.js                  # Express server + /health endpoint
+│   ├── routes/                 # URL shorten/redirect routes
+│   ├── controllers/
+│   ├── .env                    # Real credentials (gitignored!)
+│   ├── Dockerfile              # Node 20 Alpine, production deps
+│   └── .dockerignore
+│
+├── terraform/                  # 🆕 IaC — Docker Compose ka replacement
+│   ├── main.tf                 # Containers, network, volumes define karo
+│   ├── variables.tf            # Configurable values (ports, names, images)
+│   └── outputs.tf              # Apply ke baad URLs print hoti hain
+│
+├── puppet/
+│   ├── ctrlxurl.pp             # Configuration management manifest
+│   └── auto-heal-daemon.sh     # Background self-healing script
+│
+├── nagios/
+│   └── ctrlxurl-nagios.cfg     # Custom monitoring checks config
+│
+├── .gitignore
+└── README.md                   # Yeh file!
+```
 
 ---
 
-### 🔹 TOOL 1: GITHUB ACTIONS (Continuous Integration - CI)
+## 🌐 Browser URLs Table
 
-#### Kyu use kiya?
-Bina CI ke developers broken code ya syntax errors push kar dete hain jo server par jaakar production crash kar deta hai. GitHub Actions har commit par automatic code validation ensure karta hai.
+| Service | URL | Kya dikhega |
+|---------|-----|-------------|
+| **Frontend** | http://localhost:5173 | React URL Shortener App |
+| **Backend API** | http://localhost:3000/health | `{"status":"ok"}` |
+| **Backend Shorten** | http://localhost:3000/api/shorten | POST endpoint |
+| **Nagios Dashboard** | http://localhost:8080/nagios | Monitoring UI |
+| **Redis** | redis://localhost:6379 | (CLI se access karo) |
 
-#### Kya kaam karta hai?
-1. Repo ke `.github/workflows/ci.yml` par trigger hota hai.
-2. Fresh Ubuntu runner par repo checkout karta hai.
-3. Node.js v20 setup karke dependencies install karta hai (`npm install`).
-4. Unit tests run karta hai (`npm test`).
-5. Backend ka Docker image build karke verify karta hai ki Dockerfile valid hai ya nahi.
-6. Agar koi bhi step fail hota hai, toh PR/commit ko RED mark karke merge hone se rok deta hai.
+---
 
-#### File: `.github/workflows/ci.yml`
+## 🔧 TOOL 1: PUPPET — Configuration Management
+
+### Puppet kya hai?
+Puppet ek **Configuration Management** tool hai.  
+Simple shabdon mein: **"Server ka state define karo, Puppet ensure karega."**
+
+| Docker Compose se fark | Puppet ka approach |
+|---|---|
+| "Up command chalaao" | "Desired state likho, Puppet khud manage karega" |
+| Manual intervention | Self-healing — auto-restart containers |
+| No drift detection | Drift detect karta hai aur fix karta hai |
+
+### Puppet ka Architecture (Is Project Mein)
+
+```
+puppet/ctrlxurl.pp          ← Manifest (desired state ki definition)
+puppet/auto-heal-daemon.sh  ← Background daemon (har 2 min apply)
+```
+
+### Puppet Manifest Kya Karta Hai?
+
+```puppet
+# 1. /opt/ctrlxurl directory ensure karo
+file { '/opt/ctrlxurl': ensure => directory }
+
+# 2. Golden .env file manage karo (config drift protection)
+file { '/opt/ctrlxurl/.env':
+  content => "PORT=3000\nREDIS_URL=redis://ctrlxurl-redis:6379\n"
+}
+
+# 3. Redis container running ensure karo
+exec { 'ensure-redis-container-running':
+  command => "docker start ctrlxurl-redis",
+  unless  => "docker ps | grep -q 'ctrlxurl-redis'",
+}
+
+# 4. Backend container running ensure karo
+exec { 'ensure-backend-container-running':
+  command => "docker start ctrlxurl-backend",
+  unless  => "docker ps | grep -q 'ctrlxurl-backend'",
+  require => Exec['ensure-redis-container-running'],
+}
+
+# 5. Container ke andar .env sync karo (DRIFT PROTECTION!)
+exec { 'sync-env-inside-backend-container':
+  command => "docker cp /opt/ctrlxurl/.env ctrlxurl-backend:/app/.env",
+  unless  => "docker exec ctrlxurl-backend test -f /app/.env",
+}
+
+# 6. Cron: har 2 minute mein auto-heal
+cron { 'puppet-docker-auto-heal':
+  command => "puppet apply puppet/ctrlxurl.pp",
+  minute  => '*/2',
+}
+```
+
+### Puppet Commands
+
+```bash
+# PATH set karo (zaruri hai Mac par)
+export PATH="/opt/puppetlabs/bin:$PATH"
+
+# Puppet apply — manifest run karo
+sudo puppet apply puppet/ctrlxurl.pp
+
+# Noop mode — kya hoga preview karo (apply mat karo)
+sudo puppet apply --noop puppet/ctrlxurl.pp
+
+# Version check
+puppet --version
+
+# Facts dekho (system info)
+puppet facts
+
+# Auto-heal daemon start karo (background mein chalega)
+sudo nohup puppet/auto-heal-daemon.sh > /dev/null 2>&1 &
+
+# Log dekho
+tail -f /tmp/puppet_heal.log
+```
+
+### Puppet Idempotency Demo
+```bash
+# Pehli baar: changes apply honge
+sudo puppet apply puppet/ctrlxurl.pp
+# Output: Notice: /Exec[ensure-redis-container-running]: executed ...
+
+# Doosri baar: kuch nahi badle ga — SAME RESULT!
+sudo puppet apply puppet/ctrlxurl.pp
+# Output: Notice: Applied catalog in 0.XX seconds (no changes)
+```
+
+---
+
+## 🏗️ TOOL 2: TERRAFORM — Infrastructure as Code (IaC)
+
+### Terraform kya hai?
+Terraform ek **Infrastructure as Code (IaC)** tool hai.  
+Simple shabdon mein: **"Code likhke infrastructure banao — manually kuch mat karo."**
+
+> **Important:** Is project mein hum AWS nahi use kar rahe.  
+> Terraform ka **Docker Provider** (kreuzwerker/docker) use karte hain  
+> jo directly local Docker Engine se baat karta hai.  
+> **No AWS account required!** ✅
+
+### Docker Compose vs Terraform
+
+| Feature | Docker Compose ❌ (hataya) | Terraform ✅ (use kar rahe hain) |
+|---|---|---|
+| Format | YAML | HCL (HashiCorp Config Language) |
+| State tracking | Nahi | Haan (`terraform.tfstate`) |
+| Plan preview | Nahi | `terraform plan` se pehle dekho |
+| IaC principle | Partial | Full IaC |
+| Infrastructure drift | Detect nahi | Detect + fix karta hai |
+| College DevOps requirement | ❌ | ✅ |
+
+### Terraform Files
+
+```hcl
+# terraform/variables.tf — Configurable values
+variable "redis_port" {
+  default = 6379
+}
+variable "backend_port" {
+  default = 3000
+}
+
+# terraform/main.tf — Actual infrastructure
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+provider "docker" {}  # Local Docker socket se connect karo
+
+resource "docker_network" "ctrlxurl_net" {
+  name = "ctrlxurl-network"
+}
+
+resource "docker_container" "redis" {
+  name    = "ctrlxurl-redis"
+  image   = "redis:7-alpine"
+  restart = "unless-stopped"
+  ports { internal = 6379; external = 6379 }
+  networks_advanced { name = docker_network.ctrlxurl_net.name }
+}
+
+resource "docker_image" "backend" {
+  name  = "ctrlxurl-backend:latest"
+  build { context = "../server" }
+}
+
+resource "docker_container" "backend" {
+  name    = "ctrlxurl-backend"
+  image   = docker_image.backend.image_id
+  restart = "unless-stopped"
+  ports   { internal = 3000; external = 3000 }
+  env     = ["REDIS_URL=redis://ctrlxurl-redis:6379"]
+  networks_advanced { name = docker_network.ctrlxurl_net.name }
+  depends_on = [docker_container.redis]
+}
+
+# terraform/outputs.tf — Apply ke baad yeh print hoga
+output "app_urls" {
+  value = {
+    frontend = "http://localhost:5173"
+    backend  = "http://localhost:3000/health"
+    nagios   = "http://localhost:8080/nagios"
+  }
+}
+```
+
+### Terraform Commands — Step by Step
+
+```bash
+cd terraform/
+
+# STEP 1: Init — Provider download karo (pehli baar)
+terraform init
+# Output: Initializing provider plugins...
+#         - Installing kreuzwerker/docker v3.x.x
+
+# STEP 2: Plan — Kya banega preview dekho (APPLY NAHI HOGA)
+terraform plan
+# Output: Plan: 7 to add, 0 to change, 0 to destroy.
+#         (network + 2 images + 4 containers)
+
+# STEP 3: Apply — Actually banao!
+terraform apply
+# "Enter a value:" aayega → type karo: yes
+# Ya silently apply karo:
+terraform apply -auto-approve
+
+# STEP 4: Running containers verify karo
+docker ps
+# Output: ctrlxurl-redis, ctrlxurl-backend, ctrlxurl-frontend, ctrlxurl-nagios
+
+# STEP 5: State dekho (Terraform sab track karta hai)
+terraform show
+
+# STEP 6: Outputs dekho
+terraform output
+
+# STEP 7: Destroy — Sab containers band karo
+terraform destroy -auto-approve
+# Phir se banao:
+terraform apply -auto-approve
+
+# STEP 8: Plan with detailed diff
+terraform plan -out=tfplan
+terraform show tfplan
+```
+
+### Terraform State — Kya Hota Hai?
+
+```bash
+# terraform.tfstate file create hoti hai apply ke baad
+# Yeh file batati hai ki kya bana hua hai
+cat terraform/terraform.tfstate
+
+# State file gitignored hai (secrets hoti hain isme)
+# .gitignore mein add karo:
+echo "terraform/.terraform/" >> .gitignore
+echo "terraform/terraform.tfstate" >> .gitignore
+echo "terraform/terraform.tfstate.backup" >> .gitignore
+```
+
+---
+
+## 🐳 TOOL 3: DOCKER — Containers
+
+### Docker kya hai?
+Docker ek **containerization** tool hai.  
+Simple shabdon mein: **"App aur uske saare dependencies ek box mein pack karo."**
+
+### Is Project Ke Dockerfiles
+
+```dockerfile
+# server/Dockerfile — Backend
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN rm -f .env          # .env KABHI image mein mat daalo!
+EXPOSE 3000
+CMD ["node", "app.js"]
+```
+
+```dockerfile
+# client/Dockerfile — Frontend (Multi-stage build)
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build       # React → static files
+
+FROM nginx:alpine       # Sirf Nginx + built files, Node nahi!
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+```
+
+### Docker Commands
+
+```bash
+# Images dekho
+docker images
+
+# Running containers dekho
+docker ps
+
+# Sab containers dekho (stopped bhi)
+docker ps -a
+
+# Container logs dekho
+docker logs ctrlxurl-backend
+docker logs ctrlxurl-backend --follow   # Live logs
+
+# Container ke andar jaao
+docker exec -it ctrlxurl-backend sh
+
+# Container restart karo
+docker restart ctrlxurl-backend
+
+# Network dekho
+docker network ls
+docker network inspect ctrlxurl-network
+
+# Image manually build karo
+docker build -t ctrlxurl-backend:latest ./server
+docker build -t ctrlxurl-frontend:latest ./client
+
+# Sab containers manually band karo
+docker stop ctrlxurl-redis ctrlxurl-backend ctrlxurl-frontend ctrlxurl-nagios
+
+# Sab containers delete karo
+docker rm ctrlxurl-redis ctrlxurl-backend ctrlxurl-frontend ctrlxurl-nagios
+```
+
+### Terraform ke sath Docker workflow
+
+```bash
+# Pehli baar setup:
+cd terraform
+terraform init
+terraform apply -auto-approve
+
+# App use karo...
+
+# Containers band karo:
+terraform destroy -auto-approve
+
+# Phir se start karo:
+terraform apply -auto-approve
+```
+
+---
+
+## 📡 TOOL 4: NAGIOS — Monitoring
+
+### Nagios kya hai?
+Nagios ek **monitoring tool** hai.  
+Simple shabdon mein: **"24/7 watch rakho — kuch bhi fail ho toh alert karo."**
+
+### Nagios Configuration
+
+```nagios
+# nagios/ctrlxurl-nagios.cfg
+
+# Host define karo
+define host {
+  use         linux-server
+  host_name   ctrlxurl-backend
+  address     ctrlxurl-backend       # Docker network name se resolve hoga
+  alias       CtrlXURL Backend Server
+}
+
+# Check 1: Container alive hai?
+define service {
+  host_name           ctrlxurl-backend
+  service_description Backend Container Alive
+  check_command       check_ping!100.0,20%!500.0,60%
+  check_period        24x7
+}
+
+# Check 2: HTTP /health endpoint OK hai?
+define service {
+  host_name           ctrlxurl-backend
+  service_description Backend API Health Check
+  check_command       check_http!-p 3000 -u /health
+  check_period        24x7
+}
+
+# Check 3: Disk space
+define service {
+  host_name           localhost
+  service_description Disk Usage
+  check_command       check_local_disk!20%!10%!/
+  check_period        24x7
+}
+
+# Check 4: CPU load
+define service {
+  host_name           localhost
+  service_description CPU Load
+  check_command       check_local_load!5.0,4.0,3.0!10.0,6.0,4.0
+  check_period        24x7
+}
+```
+
+### Nagios Access
+
+```bash
+# Browser mein jaao:
+# http://localhost:8080/nagios
+# Username: nagiosadmin
+# Password: nagios123
+
+# Nagios container logs
+docker logs ctrlxurl-nagios
+
+# Nagios config test karo (container ke andar)
+docker exec ctrlxurl-nagios /opt/nagios/bin/nagios -v /opt/nagios/etc/nagios.cfg
+
+# Nagios reload karo (config change ke baad)
+docker exec ctrlxurl-nagios /opt/nagios/bin/nagios -s /opt/nagios/var/nagios.lock
+```
+
+### Nagios Status Explain (Jo Screenshot Mein Dikh Raha Tha)
+
+```
+Service Status Details For All Hosts
+
+ctrlxurl-backend:
+  ✅ Backend API Health Check    — OK (HTTP 200)
+  ✅ Backend Container Alive     — OK (PING 0ms RTA)
+  ✅ CPU Load                    — OK (0.49, 0.83, 1.09)
+  ✅ Disk Usage                  — OK (198GB free)
+
+localhost:
+  ✅ Current Load                — OK
+  ✅ Current Users               — OK (0 users)
+  ⚠️  HTTP                       — WARNING: 401 Unauthorized
+     (Yeh NORMAL hai! Nagios localhost ka HTTP check karta hai
+      jahan Nagios khud hai, aur login required hota hai)
+  ✅ PING                        — OK (0.17ms RTA)
+  ✅ Root Partition              — OK
+  ✅ Swap Usage                  — OK (100% free)
+  ✅ Total Processes             — OK (29 processes)
+```
+
+---
+
+## ⚙️ GitHub Actions CI Pipeline
+
 ```yaml
-name: CI - Test and Build
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+# .github/workflows/ci.yml
+
+name: CI Pipeline — CtrlXURL
+on: [push, pull_request]
 
 jobs:
-  test-and-build:
-    name: Test Backend + Build Docker Image
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4           # 1. Code download karo
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4         # 2. Node.js setup
         with:
           node-version: '20'
 
-      - name: Install backend dependencies
+      - run: npm install                    # 3. Dependencies install
         working-directory: server
-        run: npm install
 
-      - name: Run backend test
+      - run: npm test                       # 4. Tests chalaao
         working-directory: server
-        run: npm test
 
-      - name: Build Docker image
-        run: docker build -t ctrlxurl-backend ./server
+      - run: docker build -t ctrlxurl-backend:ci ./server   # 5. Docker build verify
 ```
 
-#### GitHub Commands:
+---
+
+## 🚀 Complete Setup Guide
+
+### Prerequisites
 ```bash
-# Code push karo (Actions auto-trigger hoga)
-git add .
-git commit -m "feat: complete devops pipeline setup"
-git push origin main
+# Yeh sab installed hona chahiye:
+docker --version          # Docker Desktop
+terraform --version       # >= 1.0
+puppet --version          # Puppet 7.x
+node --version            # Node.js >= 18
 ```
-👉 **Verification:** Browser me `https://github.com/Ankitmina25/CtrlXURL/actions` kholo. Green checkmark `✔` dikhega.
 
----
+### First Time Setup
 
-### 🔹 TOOL 2: DOCKER & DOCKER COMPOSE (Containerization)
-
-#### Kyu use kiya?
-"Mere laptop me chal raha tha, production server pe nahi chal raha" — ye issue solve karne ke liye. Docker application ko uske OS dependencies, runtime aur libraries ke sath ek isolated lightweight container me pack karta hai.
-
-#### Kya kaam karta hai?
-- **Backend Container:** Node.js 20 Alpine lightweight base par API server run karta hai (Port 3000).
-- **Frontend Container:** React application ko build karke high-performance Nginx web server ke through serve karta hai (Port 5173).
-- **Redis Container:** Redis Alpine image use karke URL caching manage karta hai (Port 6379).
-- **Nagios Container:** Pre-configured monitoring suite ko run karta hai (Port 8080).
-- Sabhi containers ek private bridge network `ctrlxurl-net` par aapas me DNS name se communicate karte hain.
-
-#### Commands & Usage:
 ```bash
-# 1. Sabhi 4 containers ko background me build aur run karo
-docker compose up -d --build
+# 1. Repo clone karo
+git clone https://github.com/Ankitmina25/CtrlXURL.git
+cd URL-Shortner
 
-# 2. Containers ka running status check karo
-docker compose ps
+# 2. Backend .env file banao
+cp server/.env.example server/.env
+# .env mein apni values daalo (MongoDB URI, JWT secret, etc.)
 
-# 3. Backend service ke live logs dekho
-docker compose logs -f backend
+# 3. Terraform init karo (pehli baar provider download hoga)
+cd terraform
+terraform init
 
-# 4. Containers ko stop aur remove karo
-docker compose down
+# 4. Infrastructure banao (Docker Terraform se manage karega)
+terraform apply -auto-approve
 
-# 5. Live Health check terminal se test karo
-curl http://localhost:3000/health
-# Response: {"status":"ok","uptime":...,"timestamp":"..."}
+# 5. Verify karo — sab containers chal rahe hain?
+docker ps
+# Expected: 4 containers — redis, backend, frontend, nagios
+
+# 6. Browser mein open karo
+# Frontend: http://localhost:5173
+# Nagios:   http://localhost:8080/nagios
+# Backend:  http://localhost:3000/health
+
+# 7. (Optional) Puppet daemon start karo (self-healing)
+export PATH="/opt/puppetlabs/bin:$PATH"
+sudo puppet apply puppet/ctrlxurl.pp
+sudo nohup puppet/auto-heal-daemon.sh > /dev/null 2>&1 &
 ```
 
----
+### Daily Workflow
 
-### 🔹 TOOL 3: PUPPET (Configuration Management & Self-Healing IaC)
-
-#### Kyu use kiya?
-Server par manually software install karna ya settings banana error-prone aur slow hota hai. Puppet **Declarative Language** use karta hai — hum sirf desired state define karte hain, aur Puppet server ko hamesha us state me maintain rakhta hai. Agar koi setting ya container crash ya delete ho jaye, toh Puppet use **Self-Heal (Auto-Recover)** karta hai.
-
-#### Humne Puppet se kya-kya implement kiya?
-1. **Directory Management:** `/opt/ctrlxurl` directory ensure karta hai.
-2. **Permission Drift Protection:** Directory permissions ko strictly `0755` par maintain karta hai.
-3. **Golden Master `.env` Management:** Host server par master `.env` file maintain karta hai.
-4. **In-Container Config Drift Protection:** Container ke andar `/app/.env` file inject karta hai. Agar container ke andar se koi `.env` delete ya modify kare, Puppet use turant wapas restore kar deta hai!
-5. **Docker Container State Management:** Check karta hai ki `ctrlxurl-redis` aur `ctrlxurl-backend` containers running hain ya nahi; band hone par auto-restart karta hai.
-6. **Daemon Pull Model:** Background script `auto-heal-daemon.sh` har 2 minute me Puppet ko run karta hai bina kisi human intervention ke.
-
-#### File: `puppet/ctrlxurl.pp`
-```puppet
-# Project Paths
-$project_dir  = '/Users/ankitmeena/CodeBase/ProjectLab/URL-Shortner'
-$docker_bin   = '/usr/local/bin/docker'
-$compose_bin  = '/usr/local/bin/docker-compose'
-
-$root_group = $facts['os']['family'] ? {
-  'Darwin' => 'wheel',
-  default  => 'root',
-}
-
-# 1. Directory Creation & Permission
-file { '/opt/ctrlxurl':
-  ensure => directory,
-  owner  => 'root',
-  group  => $root_group,
-  mode   => '0755',
-}
-
-# 2. Golden Master Config
-file { '/opt/ctrlxurl/.env':
-  ensure  => file,
-  owner   => 'root',
-  group   => $root_group,
-  mode    => '0600',
-  content => "PORT=3000\nNODE_ENV=production\nBASE_URL=http://localhost:3000\nREDIS_URL=redis://redis:6379\nMANAGED_BY=Puppet-DevOps\n",
-  require => File['/opt/ctrlxurl'],
-}
-
-# 3. Ensure Redis Container Running
-exec { 'ensure-redis-container-running':
-  command     => "${compose_bin} -f ${project_dir}/docker-compose.yml up -d redis",
-  unless      => "${docker_bin} ps --filter 'name=ctrlxurl-redis' --filter 'status=running' --format '{{.Names}}' | grep -q 'ctrlxurl-redis'",
-  path        => ['/usr/local/bin', '/usr/bin', '/bin'],
-  cwd         => $project_dir,
-  environment => ['HOME=/root'],
-}
-
-# 4. Ensure Backend Container Running
-exec { 'ensure-backend-container-running':
-  command     => "${compose_bin} -f ${project_dir}/docker-compose.yml up -d backend",
-  unless      => "${docker_bin} ps --filter 'name=ctrlxurl-backend' --filter 'status=running' --format '{{.Names}}' | grep -q 'ctrlxurl-backend'",
-  path        => ['/usr/local/bin', '/usr/bin', '/bin'],
-  cwd         => $project_dir,
-  environment => ['HOME=/root'],
-  require     => Exec['ensure-redis-container-running'],
-}
-
-# 5. In-Container .env Drift Protection
-exec { 'sync-env-inside-backend-container':
-  command     => "${docker_bin} cp /opt/ctrlxurl/.env ctrlxurl-backend:/app/.env",
-  unless      => "/bin/bash -c '${docker_bin} ps -q -f name=ctrlxurl-backend | grep -q . && ${docker_bin} exec ctrlxurl-backend test -f /app/.env && [ \"\$(${docker_bin} exec ctrlxurl-backend wc -l < /app/.env | tr -d \" \")\" = \"\$(wc -l < /opt/ctrlxurl/.env | tr -d \" \")\" ]'",
-  path        => ['/usr/local/bin', '/usr/bin', '/bin'],
-  environment => ['HOME=/root'],
-  require     => [Exec['ensure-backend-container-running'], File['/opt/ctrlxurl/.env']],
-}
-```
-
-#### Puppet Practical Tests (Demos for Viva / Presentation):
-
-* **Test A: Folder Recreation (Idempotency)**
-  ```bash
-  # Delete directory manually
-  sudo rm -rf /opt/ctrlxurl
-  # Run Puppet
-  sudo puppet apply puppet/ctrlxurl.pp
-  # Output: Notice: .../File[/opt/ctrlxurl]/ensure: created  ✅
-  ```
-
-* **Test B: Security Permission Drift Auto-Fix**
-  ```bash
-  # Tamper permission to unsafe 777
-  sudo chmod 777 /opt/ctrlxurl
-  # Run Puppet
-  sudo puppet apply puppet/ctrlxurl.pp
-  # Output: Notice: .../File[/opt/ctrlxurl]/mode: mode changed '0777' to '0755'  ✅
-  ```
-
-* **Test C: In-Container `.env` Auto-Recovery**
-  ```bash
-  # Container ke andar se config delete karo
-  docker exec ctrlxurl-backend rm -f /app/.env
-  # Run Puppet
-  sudo puppet apply puppet/ctrlxurl.pp
-  # Verify container ke andar file wapas aa gayi:
-  docker exec ctrlxurl-backend cat /app/.env  ✅
-  ```
-
-* **Test D: Background 2-Minute Pull Daemon (Zero Manual Commands)**
-  ```bash
-  # Background daemon start karo (sirf 1 baar)
-  sudo nohup /Users/ankitmeena/CodeBase/ProjectLab/URL-Shortner/puppet/auto-heal-daemon.sh > /dev/null 2>&1 &
-
-  # Ab container ke andar se .env delete karke 2 min aaram se wait karo!
-  docker exec ctrlxurl-backend rm -f /app/.env
-  # 2 minute baad check karo, file apne aap restore ho chuki hogi!
-  ```
-
----
-
-### 🔹 TOOL 4: NAGIOS (24/7 Continuous Monitoring)
-
-#### Kyu use kiya?
-Server crash hone par ya API unresponsive hone par developers ko turant pata chal sake, isse pehle ki end-users complain karein.
-
-#### Nagios kya-kya monitor kar raha hai? (4 Live Checks):
-1. **`Backend API Health Check` (Port 3000):**
-   - Check Command: `check_http!-H backend -p 3000 -u /health`
-   - Har 3 minute me request bhejta hai. Agar HTTP 200 OK ke alawa kuch aaya, toh turant **CRITICAL (RED)** alert deta hai. Response time bhi track karta hai (~0.019 sec).
-2. **`Backend Container Alive` (Ping Check):**
-   - Check Command: `check_ping!100.0,20%!500.0,60%`
-   - Packet loss aur network latency measure karta hai. 0% loss = OK.
-3. **`CPU Load`:**
-   - Check Command: `check_local_load!5.0,4.0,3.0!10.0,8.0,6.0`
-   - Server ka 1, 5 aur 15 minute ka load average monitor karta hai. High traffic / DDoS par warn karta hai.
-4. **`Disk Usage`:**
-   - Check Command: `check_local_disk!20%!10%!/`
-   - Root partition me free space track karta hai (>80% full = WARN, >90% full = CRITICAL).
-
-#### Nagios Access:
-- **URL:** [http://localhost:8080/nagios](http://localhost:8080/nagios)
-- **Username:** `nagiosadmin`
-- **Password:** `nagios123`
-
-#### Live Alert Simulation Demo:
 ```bash
-# 1. Backend container ko stop karo
-docker compose stop backend
+# Start karo
+cd terraform && terraform apply -auto-approve
 
-# 2. Nagios web UI refresh karo:
-# -> Backend API Health Check 'CRITICAL' (RED) ho jayega!
+# Kaam karo...
 
-# 3. Backend wapas start karo
-docker compose start backend
-
-# 4. Nagios refresh karo:
-# -> Wapas 'OK' (GREEN) ho jayega (Recovery Event)!
+# Stop karo
+terraform destroy -auto-approve
 ```
 
 ---
 
-## 🌐 4. Browser URLs Quick Reference
+## 🛑 Sab Band Karna Hai?
 
-| Service | Browser Link | Description |
+```bash
+# Terraform se sab containers destroy karo
+cd terraform
+terraform destroy -auto-approve
+
+# Ya manually:
+docker stop ctrlxurl-redis ctrlxurl-backend ctrlxurl-frontend ctrlxurl-nagios
+docker rm ctrlxurl-redis ctrlxurl-backend ctrlxurl-frontend ctrlxurl-nagios
+docker network rm ctrlxurl-network
+
+# Puppet daemon band karo (agar chal raha hai)
+sudo pkill -f auto-heal-daemon
+```
+
+---
+
+## 🎓 Key Learnings (Viva Answers)
+
+### Q: Docker Compose aur Terraform mein fark kya hai?
+
+| | Docker Compose | Terraform |
 |---|---|---|
-| **Frontend UI (React)** | 👉 [http://localhost:5173](http://localhost:5173) | Main URL Shortener Web App |
-| **Backend API Health** | 👉 [http://localhost:3000/health](http://localhost:3000/health) | API Status & Server Uptime JSON |
-| **Nagios Monitoring** | 👉 [http://localhost:8080/nagios](http://localhost:8080/nagios) | Live Infrastructure & Service Dashboard |
-| **GitHub Actions** | 👉 `https://github.com/Ankitmina25/CtrlXURL/actions` | CI Pipeline Build & Test History |
+| **Purpose** | Multi-container apps | Infrastructure as Code |
+| **State** | No state tracking | `terraform.tfstate` file |
+| **Plan** | No preview | `terraform plan` se preview |
+| **Idempotent** | Partial | Full idempotency |
+| **Industry use** | Development | Production infra |
+
+**Answer:** Docker Compose ek YAML file hai jo `docker compose up` se run hoti hai — simple hai lekin state track nahi karta. Terraform code se infrastructure define karta hai, state file maintain karta hai, pehle plan dikhata hai phir apply karta hai. DevOps mein Terraform industry standard hai.
 
 ---
 
-## 🎓 5. Key Learnings & Viva / Interview Answers (हमने क्या सीखा?)
+### Q: Puppet kya karta hai aur kyun zaruri hai?
 
-1. **Idempotency kya hoti hai?**
-   - Chahe Puppet ko 1 baar run karo ya 100 baar, agar server already desired state me hai, toh wo koi duplicate change nahi karega. Agar koi change hua (drift), sirf usi ko theek karega.
-2. **Configuration Drift kya hota hai?**
-   - Jab koi engineer ya unauthorized user server par manually koi setting badal deta hai (e.g. `chmod 777` ya file delete). Puppet ka automated pull agent is drift ko detect karke automatically rollback karta hai.
-3. **Active vs Passive Monitoring kya hai?**
-   - Nagios yahan **Active Monitoring** kar raha hai — wo scheduled interval par proactively container ke `/health` aur ping check par requests send karke status verify karta hai.
-4. **Containerization vs Virtualization?**
-   - Docker container host OS ke kernel ko share karta hai, isliye ye VM ke mukable 10x lightweight aur seconds me start hone wala hota hai.
-5. **CI/CD Pipeline ka core purpose kya hai?**
-   - Har code commit ko automatic testing aur docker building ke standard se pass karwana taaki production me zero bugs reach karein.
+**Answer:** Puppet **Configuration Management** tool hai. Yeh "desired state" define karta hai — matlab aap batate ho "mujhe yeh chahiye" aur Puppet ensure karta hai woh state hamesha maintain rahe. Agar koi container band ho jaye, Puppet khud restart karega (self-healing). Ek aur important feature: **drift detection** — agar koi manually kuch change kare, Puppet detect karega aur revert karega.
+
+---
+
+### Q: Nagios monitoring kyun use kiya?
+
+**Answer:** Nagios 24/7 infrastructure watch karta hai. Hum 4 checks define kiye: container alive hai kya, HTTP endpoint respond kar raha hai kya, disk space theek hai kya, CPU load normal hai kya. Agar kuch fail hota hai, Nagios alert bhejta hai. Is project mein humne dekha ki 10 checks GREEN hain aur 1 WARNING hai (HTTP 401 — jo expected hai kyunki Nagios khud login protected hai).
+
+---
+
+### Q: Terraform state file kya hoti hai?
+
+**Answer:** `terraform.tfstate` ek JSON file hai jo track karta hai ki Terraform ne kya resources banaye hain. Jab aap `terraform apply` karte ho, Terraform is file se compare karta hai ki real infrastructure aur desired state mein kya fark hai. Isliye Terraform idempotent hai — baar baar apply karo, sirf changes apply honge.
+
+---
+
+### Q: Docker multi-stage build kyun use kiya?
+
+**Answer:** Frontend ke liye multi-stage build use ki. Pehle stage mein Node.js se React code build kiya (npm run build). Doosre stage mein sirf Nginx image li aur build output copy kiya. Result: final image mein Node.js bilkul nahi — sirf Nginx + static files. Image size ~90% kam hoti hai. Security bhi better hoti hai — attack surface kam hota hai.
+
+---
+
+## 👨‍💻 Author
+
+**Ankit Meena** — DevOps Project  
+GitHub: [@Ankitmina25](https://github.com/Ankitmina25)  
+Email: ankitmina2512@gmail.com
+
+---
+
+*Terraform + Puppet + Docker + Nagios — Yeh charo milke ek production-ready DevOps pipeline banate hain* 🔥

@@ -69,10 +69,8 @@ URL-Shortner/
 │   └── outputs.tf              # Outputs URLs and Container IDs
 │
 ├── puppet/
-│   ├── manifests/
-│   │   └── site.pp             # ⭐️ Master-Agent Manifest (served by Puppet Server)
-│   ├── ctrlxurl.pp             # Standalone manifest for masterless puppet apply
-│   └── auto-heal-daemon.sh     # Background self-healing script
+│   └── manifests/
+│       └── site.pp             # ⭐️ Master-Agent Manifest (Served by Puppet Master)
 │
 ├── nagios/
 │   └── ctrlxurl-nagios.cfg     # Custom monitoring checks (Backend, API, Disk, CPU, Puppet Master)
@@ -107,22 +105,16 @@ Simple shabdon mein: **"Server ka state define karo, Puppet ensure karega."**
 | Manual intervention | Self-healing — auto-restart containers |
 | No drift detection | Drift detect karta hai aur fix karta hai |
 
-### Puppet ke 2 Modes (Is Project Mein Dono Configured Hain)
+### Puppet Architecture: Master-Agent (Client-Server with SSL) ⭐️
 
-```
-1. Master-Agent Architecture (Enterprise Client-Server with SSL) ⭐️
-   - puppet-master (Puppet Server on port 8140)
-   - puppet-agent (Puppet Agent node)
-   - Manifest: puppet/manifests/site.pp
-
-2. Masterless Architecture (Standalone via `puppet apply`)
-   - Direct catalog compilation on node
-   - Manifest: puppet/ctrlxurl.pp
-```
+Is project mein enterprise-grade **Master-Agent Architecture** chalta hai:
+- **`puppet-master`:** Puppet Server container (port 8140 pe listen karta hai, SSL Certificate Authority manage karta hai).
+- **`puppet-agent`:** Puppet Node container (Puppet Master se connect hota hai, SSL verify karta hai, aur desired state enforce karta hai).
+- **Manifest:** `puppet/manifests/site.pp` (Puppet Server isi file se catalog compile karke Agent ko bhejta hai).
 
 ---
 
-### 🌟 Master-Agent Mode: Live Commands & Demonstration
+### 🌟 Master-Agent Live Commands & Demonstration
 
 ```bash
 # 1. Puppet Agent se Master ko catalog request bhejo (SSL Handshake demo)
@@ -130,6 +122,10 @@ docker exec -it puppet-agent puppet agent --test --server puppet
 
 # 2. Puppet Master par active certificates dekho
 docker exec -it puppet-master puppetserver ca list --all
+# Output:
+# Signed Certificates:
+#   puppet (Master Server)
+#   puppet-agent (Node Client with SHA256 Fingerprint)
 
 # 3. Agent par verify karo ki desired state apply hui
 docker exec -it puppet-agent cat /tmp/puppet-client-server-verified.txt
@@ -147,10 +143,10 @@ docker exec -it puppet-agent cat /opt/ctrlxurl/.env
 
 ---
 
-### Puppet Manifest Kya Karta Hai?
+### 📜 Master Manifest (`puppet/manifests/site.pp`)
 
 ```puppet
-# puppet/manifests/site.pp (Served by Puppet Master)
+# Served by Puppet Master over SSL
 node default {
   file { '/tmp/puppet-client-server-verified.txt':
     ensure  => file,
@@ -165,45 +161,23 @@ node default {
     ensure  => file,
     content => "PORT=3000\nNODE_ENV=production\nREDIS_URL=redis://ctrlxurl-redis:6379\n",
   }
+
+  notify { 'puppet-agent-state-applied':
+    message => "Puppet Master successfully compiled catalog for ${trusted['certname']}. Desired state is synchronized!",
+  }
 }
 ```
 
 ---
 
-### Masterless Puppet Commands (Local `puppet apply`)
-
+### Puppet Idempotency Demo (Master-Agent)
 ```bash
-# PATH set karo (zaruri hai Mac par)
-export PATH="/opt/puppetlabs/bin:$PATH"
+# Pehli baar: Changes apply honge (Notice: defined content)
+docker exec -it puppet-agent puppet agent --test --server puppet
 
-# Puppet apply — manifest run karo
-sudo puppet apply puppet/ctrlxurl.pp
-
-# Noop mode — kya hoga preview karo (apply mat karo)
-sudo puppet apply --noop puppet/ctrlxurl.pp
-
-# Version check
-puppet --version
-
-# Facts dekho (system info)
-puppet facts
-
-# Auto-heal daemon start karo (background mein chalega)
-sudo nohup puppet/auto-heal-daemon.sh > /dev/null 2>&1 &
-
-# Log dekho
-tail -f /tmp/puppet_heal.log
-```
-
-### Puppet Idempotency Demo
-```bash
-# Pehli baar: changes apply honge
-sudo puppet apply puppet/ctrlxurl.pp
-# Output: Notice: /Exec[ensure-redis-container-running]: executed ...
-
-# Doosri baar: kuch nahi badle ga — SAME RESULT!
-sudo puppet apply puppet/ctrlxurl.pp
-# Output: Notice: Applied catalog in 0.XX seconds (no changes)
+# Doosri baar: Kuch change nahi hoga — SAME RESULT!
+docker exec -it puppet-agent puppet agent --test --server puppet
+# Output: Notice: Applied catalog in 0.03 seconds (no changes)
 ```
 
 ---
@@ -600,10 +574,8 @@ docker ps
 # Nagios:   http://localhost:8080/nagios
 # Backend:  http://localhost:3000/health
 
-# 7. (Optional) Puppet daemon start karo (self-healing)
-export PATH="/opt/puppetlabs/bin:$PATH"
-sudo puppet apply puppet/ctrlxurl.pp
-sudo nohup puppet/auto-heal-daemon.sh > /dev/null 2>&1 &
+# 7. Puppet Master-Agent catalog pull verify karo
+docker exec -it puppet-agent puppet agent --test --server puppet
 ```
 
 ### Daily Workflow
@@ -627,13 +599,10 @@ terraform destroy -auto-approve
 cd terraform
 terraform destroy -auto-approve
 
-# Ya manually:
-docker stop ctrlxurl-redis ctrlxurl-backend ctrlxurl-frontend ctrlxurl-nagios
-docker rm ctrlxurl-redis ctrlxurl-backend ctrlxurl-frontend ctrlxurl-nagios
+# Ya manually sab containers stop karo:
+docker stop ctrlxurl-redis ctrlxurl-backend ctrlxurl-frontend ctrlxurl-nagios puppet-master puppet-agent
+docker rm ctrlxurl-redis ctrlxurl-backend ctrlxurl-frontend ctrlxurl-nagios puppet-master puppet-agent
 docker network rm ctrlxurl-network
-
-# Puppet daemon band karo (agar chal raha hai)
-sudo pkill -f auto-heal-daemon
 ```
 
 ---
@@ -756,21 +725,17 @@ Nagios        →  http://localhost:8080/nagios  (user: nagiosadmin / pass: nagi
 
 ---
 
-### 🔧 STEP 3 — Puppet Chalaao (Config Management + Self-Healing)
+### 🔧 STEP 3 — Puppet Master-Agent Sync Check Karo
 
 ```bash
-# PATH set karo (Mac par zaruri hai)
-export PATH="/opt/puppetlabs/bin:$PATH"
+# Agent se Master ko catalog request bhejo (SSL test)
+docker exec -it puppet-agent puppet agent --test --server puppet
 
-# Puppet apply karo — desired state enforce karega
-sudo puppet apply puppet/ctrlxurl.pp
+# Master par active signed certificates dekho
+docker exec -it puppet-master puppetserver ca list --all
 
-# (Optional) Background mein auto-heal daemon start karo
-# Yeh har 2 minute mein puppet apply karega automatically
-sudo nohup puppet/auto-heal-daemon.sh > /dev/null 2>&1 &
-
-# Puppet logs dekho
-tail -f /tmp/puppet_heal.log
+# Agent par enforced file verify karo
+docker exec -it puppet-agent cat /tmp/puppet-client-server-verified.txt
 ```
 
 ---
@@ -811,9 +776,6 @@ cd terraform && terraform output && cd ..
 cd terraform
 terraform destroy -auto-approve
 cd ..
-
-# Puppet daemon bhi band karo (agar chala raha hai)
-sudo pkill -f auto-heal-daemon.sh
 ```
 
 ---
@@ -852,8 +814,8 @@ docker network inspect ctrlxurl-network
 # Terraform current state dekho
 cd terraform && terraform show
 
-# Puppet noop mode (kya change hoga — apply nahi karega)
-sudo puppet apply --noop puppet/ctrlxurl.pp
+# Puppet Agent test run (noop mode preview)
+docker exec -it puppet-agent puppet agent --test --noop --server puppet
 ```
 
 ---
@@ -861,9 +823,9 @@ sudo puppet apply --noop puppet/ctrlxurl.pp
 ### 📋 Ek Nazar Mein — Full Flow
 
 ```
-git clone  →  terraform init  →  terraform apply  →  browser open  →  puppet apply
+git clone  →  terraform init  →  terraform apply  →  browser open  →  puppet agent sync
    ↓                                    ↓                                   ↓
- Code lao                     4 containers ready                     Self-healing ON
+ Code lao                     6 containers ready                     Master-Agent SSL ON
 
 Kaam karo...
 

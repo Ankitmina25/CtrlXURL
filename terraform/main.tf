@@ -216,6 +216,7 @@ resource "docker_container" "puppet_master" {
 
 # ── 8. Puppet Agent Container (Client/Node) ───────────────────
 # Agent communicates with Puppet Master over SSL to pull and enforce desired state
+# Auto-Heals stopped containers every 60 seconds (1 minute)!
 resource "docker_container" "puppet_agent" {
   name     = "puppet-agent"
   hostname = "puppet-agent"
@@ -225,8 +226,19 @@ resource "docker_container" "puppet_agent" {
   entrypoint = [
     "/bin/sh",
     "-c",
-    "sleep 20; puppet agent --test --server puppet || true; exec puppet agent --verbose --no-daemonize --server puppet"
+    "sleep 15; puppet agent --test --server puppet || true; exec puppet agent --verbose --no-daemonize --runinterval 60 --server puppet"
   ]
+
+  volumes {
+    host_path      = "/var/run/docker.sock"
+    container_path = "/var/run/docker.sock"
+  }
+
+  volumes {
+    host_path      = "${var.project_dir}/puppet/bin/docker"
+    container_path = "/usr/local/bin/docker"
+    read_only      = true
+  }
 
   networks_advanced {
     name = docker_network.ctrlxurl_net.name

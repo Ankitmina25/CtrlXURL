@@ -183,3 +183,54 @@ resource "docker_container" "nagios" {
 
   depends_on = [docker_container.backend]
 }
+
+# ── 7. Puppet Master Container (Server) ──────────────────────
+# Master-Agent Architecture: Puppet Server provides catalog & manages SSL
+resource "docker_container" "puppet_master" {
+  name     = "puppet-master"
+  hostname = "puppet"
+  image    = var.puppet_master_image
+  restart  = "unless-stopped"
+
+  ports {
+    internal = 8140
+    external = var.puppet_master_port
+  }
+
+  env = [
+    "PUPPETSERVER_JAVA_ARGS=-Xms512m -Xmx512m",
+    "DNS_ALT_NAMES=puppet,puppet-master,localhost",
+    "AUTOSIGN=true",
+  ]
+
+  volumes {
+    host_path      = "${var.project_dir}/puppet/manifests"
+    container_path = "/etc/puppetlabs/code/environments/production/manifests"
+    read_only      = true
+  }
+
+  networks_advanced {
+    name = docker_network.ctrlxurl_net.name
+  }
+}
+
+# ── 8. Puppet Agent Container (Client/Node) ───────────────────
+# Agent communicates with Puppet Master over SSL to pull and enforce desired state
+resource "docker_container" "puppet_agent" {
+  name     = "puppet-agent"
+  hostname = "puppet-agent"
+  image    = var.puppet_agent_image
+  restart  = "unless-stopped"
+
+  entrypoint = [
+    "/bin/sh",
+    "-c",
+    "sleep 20; puppet agent --test --server puppet || true; exec puppet agent --verbose --no-daemonize --server puppet"
+  ]
+
+  networks_advanced {
+    name = docker_network.ctrlxurl_net.name
+  }
+
+  depends_on = [docker_container.puppet_master]
+}

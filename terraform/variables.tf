@@ -72,3 +72,21 @@ variable "network_name" {
   type        = string
   default     = "ctrlxurl-network"
 }
+
+variable "puppet_master_image" {
+  description = "Puppet Master (Server) Docker image"
+  type        = string
+  default     = "puppet/puppetserver:latest"
+}
+
+variable "puppet_agent_image" {
+  description = "Puppet Agent Docker image"
+  type        = string
+  default     = "puppet/puppet-agent:latest"
+}
+
+variable "puppet_master_port" {
+  description = "Puppet Master SSL port"
+  type        = number
+  default     = 8140
+}

@@ -31,6 +31,16 @@ output "nagios_container_id" {
   value       = docker_container.nagios.id
 }
 
+output "puppet_master_container_id" {
+  description = "Puppet Master (Server) container ID"
+  value       = docker_container.puppet_master.id
+}
+
+output "puppet_agent_container_id" {
+  description = "Puppet Agent container ID"
+  value       = docker_container.puppet_agent.id
+}
+
 output "app_urls" {
   description = "Browser mai kahan kahan jaana hai"
   value = {

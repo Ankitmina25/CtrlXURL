@@ -10,31 +10,32 @@
 ## 📐 Architecture
 
 ```
-                        ┌──────────────────────────────────────────┐
-                        │           DEVOPS LAYER                   │
-                        │                                          │
-                        │  [Terraform] ──── manages ────► [Docker Containers]
-                        │  [Puppet]   ──── heals  ────►  [Running State]
-                        │  [Nagios]   ──── watches ───►  [Health Checks]
-                        └──────────────────────────────────────────┘
-                                          │
-                        ┌─────────────────▼──────────────────────┐
-                        │           APP LAYER                    │
-                        │                                        │
-   Browser ──► http://localhost:5173 ──► [Frontend: React+Nginx] │
-                        │                       │                │
-                        │                       ▼                │
-                        │               [Backend: Node.js]       │
-                        │                  Port 3000             │
-                        │                  /health               │
-                        │                  /api/shorten          │
-                        │                       │                │
-                        │                       ▼                │
-                        │               [Redis: Cache]           │
-                        │                  Port 6379             │
-                        └────────────────────────────────────────┘
-                                          │
-   Browser ──► http://localhost:8080/nagios ──► [Nagios Dashboard]
+                        ┌─────────────────────────────────────────────────────────┐
+                        │                     DEVOPS LAYER                        │
+                        │                                                         │
+                        │  [Terraform] ──────── provisions ──────► [6 Containers] │
+                        │  [Puppet Master: 8140] ◄── SSL Handshake ──► [Agent]   │
+                        │  [Puppet Agent] ───── heals & enforces ─► [State/.env] │
+                        │  [Nagios: 8080] ───── 24/7 monitors ───► [App & Master]│
+                        └───────────────────────────┬─────────────────────────────┘
+                                                    │
+                        ┌───────────────────────────▼─────────────────────────────┐
+                        │                       APP LAYER                         │
+                        │                                                         │
+   Browser ──► http://localhost:5173 ──► [Frontend: React+Nginx]                  │
+                        │                               │                         │
+                        │                               ▼                         │
+                        │                       [Backend: Node.js]                │
+                        │                          Port 3000                      │
+                        │                          /health                        │
+                        │                          /api/shorten                   │
+                        │                               │                         │
+                        │                               ▼                         │
+                        │                       [Redis: Cache]                    │
+                        │                          Port 6379                      │
+                        └─────────────────────────────────────────────────────────┘
+                                                    │
+   Browser ──► http://localhost:8080/nagios ────► [Nagios Dashboard]
 ```
 
 ---
@@ -62,20 +63,22 @@ URL-Shortner/
 │   ├── Dockerfile              # Node 20 Alpine, production deps
 │   └── .dockerignore
 │
-├── terraform/                  # 🆕 IaC — Docker Compose ka replacement
-│   ├── main.tf                 # Containers, network, volumes define karo
-│   ├── variables.tf            # Configurable values (ports, names, images)
-│   └── outputs.tf              # Apply ke baad URLs print hoti hain
+├── terraform/                  # 🆕 IaC — Provisions entire 6-container fleet
+│   ├── main.tf                 # Containers (Redis, Backend, Frontend, Nagios, Puppet Master, Agent)
+│   ├── variables.tf            # Configurable ports, images, and network names
+│   └── outputs.tf              # Outputs URLs and Container IDs
 │
 ├── puppet/
-│   ├── ctrlxurl.pp             # Configuration management manifest
+│   ├── manifests/
+│   │   └── site.pp             # ⭐️ Master-Agent Manifest (served by Puppet Server)
+│   ├── ctrlxurl.pp             # Standalone manifest for masterless puppet apply
 │   └── auto-heal-daemon.sh     # Background self-healing script
 │
 ├── nagios/
-│   └── ctrlxurl-nagios.cfg     # Custom monitoring checks config
+│   └── ctrlxurl-nagios.cfg     # Custom monitoring checks (Backend, API, Disk, CPU, Puppet Master)
 │
 ├── .gitignore
-└── README.md                   # Yeh file!
+└── README.md                   # Full Hinglish documentation!
 ```
 
 ---
@@ -104,51 +107,70 @@ Simple shabdon mein: **"Server ka state define karo, Puppet ensure karega."**
 | Manual intervention | Self-healing — auto-restart containers |
 | No drift detection | Drift detect karta hai aur fix karta hai |
 
-### Puppet ka Architecture (Is Project Mein)
+### Puppet ke 2 Modes (Is Project Mein Dono Configured Hain)
 
 ```
-puppet/ctrlxurl.pp          ← Manifest (desired state ki definition)
-puppet/auto-heal-daemon.sh  ← Background daemon (har 2 min apply)
+1. Master-Agent Architecture (Enterprise Client-Server with SSL) ⭐️
+   - puppet-master (Puppet Server on port 8140)
+   - puppet-agent (Puppet Agent node)
+   - Manifest: puppet/manifests/site.pp
+
+2. Masterless Architecture (Standalone via `puppet apply`)
+   - Direct catalog compilation on node
+   - Manifest: puppet/ctrlxurl.pp
 ```
+
+---
+
+### 🌟 Master-Agent Mode: Live Commands & Demonstration
+
+```bash
+# 1. Puppet Agent se Master ko catalog request bhejo (SSL Handshake demo)
+docker exec -it puppet-agent puppet agent --test --server puppet
+
+# 2. Puppet Master par active certificates dekho
+docker exec -it puppet-master puppetserver ca list --all
+
+# 3. Agent par verify karo ki desired state apply hui
+docker exec -it puppet-agent cat /tmp/puppet-client-server-verified.txt
+# Output:
+# ===============================================
+# CtrlXURL DevOps — Puppet Master-Agent Architecture
+# ===============================================
+# Status: Active & Verified
+# Node: puppet-agent
+# Server: Puppet Master (Port 8140)
+
+# 4. Agent par .env golden file dekho
+docker exec -it puppet-agent cat /opt/ctrlxurl/.env
+```
+
+---
 
 ### Puppet Manifest Kya Karta Hai?
 
 ```puppet
-# 1. /opt/ctrlxurl directory ensure karo
-file { '/opt/ctrlxurl': ensure => directory }
+# puppet/manifests/site.pp (Served by Puppet Master)
+node default {
+  file { '/tmp/puppet-client-server-verified.txt':
+    ensure  => file,
+    content => "Managed by Puppet Master & Puppet Agent (Client-Server Architecture)\n",
+  }
 
-# 2. Golden .env file manage karo (config drift protection)
-file { '/opt/ctrlxurl/.env':
-  content => "PORT=3000\nREDIS_URL=redis://ctrlxurl-redis:6379\n"
-}
+  file { '/opt/ctrlxurl':
+    ensure => directory,
+  }
 
-# 3. Redis container running ensure karo
-exec { 'ensure-redis-container-running':
-  command => "docker start ctrlxurl-redis",
-  unless  => "docker ps | grep -q 'ctrlxurl-redis'",
-}
-
-# 4. Backend container running ensure karo
-exec { 'ensure-backend-container-running':
-  command => "docker start ctrlxurl-backend",
-  unless  => "docker ps | grep -q 'ctrlxurl-backend'",
-  require => Exec['ensure-redis-container-running'],
-}
-
-# 5. Container ke andar .env sync karo (DRIFT PROTECTION!)
-exec { 'sync-env-inside-backend-container':
-  command => "docker cp /opt/ctrlxurl/.env ctrlxurl-backend:/app/.env",
-  unless  => "docker exec ctrlxurl-backend test -f /app/.env",
-}
-
-# 6. Cron: har 2 minute mein auto-heal
-cron { 'puppet-docker-auto-heal':
-  command => "puppet apply puppet/ctrlxurl.pp",
-  minute  => '*/2',
+  file { '/opt/ctrlxurl/.env':
+    ensure  => file,
+    content => "PORT=3000\nNODE_ENV=production\nREDIS_URL=redis://ctrlxurl-redis:6379\n",
+  }
 }
 ```
 
-### Puppet Commands
+---
+
+### Masterless Puppet Commands (Local `puppet apply`)
 
 ```bash
 # PATH set karo (zaruri hai Mac par)
